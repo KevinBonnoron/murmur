@@ -26,7 +26,7 @@ export abstract class BaseTTSBackend implements TTSBackend {
       throw new Error(`${this.backendName} model not loaded. Call load() first.`);
     }
 
-    consola.start(`Generating speech with ${this.backendName}: text="${request.text.substring(0, 50)}..."`);
+    consola.start(`Generating speech with ${this.backendName}: ${request.text.length} chars`);
     const result = await this.doGenerate(request);
     consola.success(`Generated ${result.duration.toFixed(2)}s of audio`);
 

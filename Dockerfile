@@ -6,6 +6,10 @@ COPY package.json bun.lock* ./
 RUN bun install --frozen-lockfile --production
 
 FROM base
+
+RUN addgroup --system murmur && adduser --system --ingroup murmur murmur
+USER murmur
+
 COPY --from=install /app/node_modules ./node_modules
 COPY . .
 

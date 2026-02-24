@@ -9,6 +9,7 @@ import { F5TTSBackend } from './f5tts/index.ts';
 import { KokoroBackend } from './kokoro/index.ts';
 
 const loadedBackends = new Map<string, TTSBackend>();
+const inFlightLoads = new Map<string, Promise<void>>();
 
 function createBackend(manifest: ModelManifest): TTSBackend {
   switch (manifest.backend) {
@@ -38,16 +39,27 @@ export async function getBackend(manifest: ModelManifest, variantKey?: string): 
   }
 
   if (!backend.isLoaded()) {
-    const modelDir = getModelDir(manifest.name);
+    let loadPromise = inFlightLoads.get(key);
+    if (!loadPromise) {
+      loadPromise = (async () => {
+        const modelDir = getModelDir(manifest.name);
 
-    // Auto-pull the variant ONNX file if missing
-    const variantPath = join(modelDir, variant.file);
-    if (!(await Bun.file(variantPath).exists())) {
-      consola.info(`Variant ${resolvedKey} not found locally, pulling...`);
-      await pullModel(manifest.name, { variant: resolvedKey });
+        // Auto-pull the variant ONNX file if missing
+        const variantPath = join(modelDir, variant.file);
+        if (!(await Bun.file(variantPath).exists())) {
+          consola.info(`Variant ${resolvedKey} not found locally, pulling...`);
+          await pullModel(manifest.name, { variant: resolvedKey });
+        }
+
+        await backend.load(modelDir, manifest, variant);
+      })();
+      inFlightLoads.set(key, loadPromise);
     }
-
-    await backend.load(modelDir, manifest, variant);
+    try {
+      await loadPromise;
+    } finally {
+      inFlightLoads.delete(key);
+    }
   }
 
   return backend;

@@ -31,7 +31,7 @@ export const generateRoutes = new Hono().post('/', async (c) => {
 
   const result = await backend.generate({
     text: input,
-    voice,
+    voice: resolvedVoice,
     speed,
     format: 'wav',
     referenceAudio,

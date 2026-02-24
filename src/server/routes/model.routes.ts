@@ -1,8 +1,14 @@
 import { Hono } from 'hono';
 import { stream as honoStream } from 'hono/streaming';
-import { getFullName } from '../../models/manifest.ts';
-import { findModel, pullModel } from '../../models/registry.ts';
+import { getFullName, parseModelRef } from '../../models/manifest.ts';
+import { pullModel } from '../../models/registry.ts';
 import { listInstalledModels, removeModel } from '../../models/storage.ts';
+
+async function findInstalledModel(nameOrRef: string): Promise<import('../../models/manifest.ts').ModelManifest | undefined> {
+  const ref = parseModelRef(nameOrRef);
+  const models = await listInstalledModels();
+  return models.find((m) => m.name === ref.name);
+}
 
 export const modelRoutes = new Hono()
   // GET /api/models — list installed models
@@ -47,44 +53,41 @@ export const modelRoutes = new Hono()
   // GET /api/models/:name — model info
   .get('/:name', async (c) => {
     const name = c.req.param('name');
-    try {
-      const manifest = await findModel(name);
-      return c.json({
-        name: getFullName(manifest),
-        backend: manifest.backend,
-        description: manifest.description,
-        license: manifest.license,
-        installed_voices: manifest.installed_voices,
-        variants: Object.keys(manifest.variants),
-        defaults: manifest.defaults,
-        files: manifest.files.map((f) => ({ name: f.name, size: f.size })),
-      });
-    } catch {
+    const manifest = await findInstalledModel(name);
+    if (!manifest) {
       return c.json({ error: `Model ${name} not found` }, 404);
     }
+    return c.json({
+      name: getFullName(manifest),
+      backend: manifest.backend,
+      description: manifest.description,
+      license: manifest.license,
+      installed_voices: manifest.installed_voices,
+      variants: Object.keys(manifest.variants),
+      defaults: manifest.defaults,
+      files: manifest.files.map((f) => ({ name: f.name, size: f.size })),
+    });
   })
 
   // DELETE /api/models/:name — remove a model
   .delete('/:name', async (c) => {
     const name = c.req.param('name');
-    try {
-      const manifest = await findModel(name);
-      await removeModel(manifest.name);
-      return new Response(null, { status: 204 });
-    } catch {
+    const manifest = await findInstalledModel(name);
+    if (!manifest) {
       return c.json({ error: `Model ${name} not found` }, 404);
     }
+    await removeModel(manifest.name);
+    return new Response(null, { status: 204 });
   })
 
   // GET /api/models/:name/voices — list installed voices for a model
   .get('/:name/voices', async (c) => {
     const name = c.req.param('name');
-    try {
-      const manifest = await findModel(name);
-      return c.json({
-        voices: manifest.installed_voices,
-      });
-    } catch {
+    const manifest = await findInstalledModel(name);
+    if (!manifest) {
       return c.json({ error: `Model ${name} not found` }, 404);
     }
+    return c.json({
+      voices: manifest.installed_voices,
+    });
   });

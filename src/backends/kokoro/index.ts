@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import { basename, join } from 'node:path';
-
 import type { ManifestVariant, ModelManifest } from '../../models/manifest.ts';
 import type { AudioResult, GenerateRequest } from '../backend.ts';
 import { BaseTTSBackend } from '../base.ts';
@@ -58,19 +57,25 @@ export class KokoroBackend extends BaseTTSBackend {
   protected async doLoad(modelPath: string, manifest: ModelManifest, variant: ManifestVariant): Promise<void> {
     this.restoreFs = patchVoiceReadFile(modelPath);
 
-    const { KokoroTTS } = await import('kokoro-js');
-    const instance = await KokoroTTS.from_pretrained(modelPath, {
-      dtype: variant.dtype as 'q8' | 'fp32' | 'fp16' | 'q4' | 'q4f16',
-      device: 'cpu',
-    });
+    try {
+      const { KokoroTTS } = await import('kokoro-js');
+      const instance = await KokoroTTS.from_pretrained(modelPath, {
+        dtype: variant.dtype as 'q8' | 'fp32' | 'fp16' | 'q4' | 'q4f16',
+        device: 'cpu',
+      });
 
-    // Bypass voice validation entirely — kokoro-js only recognises 28 English
-    // voices and prints a noisy table to the console for every unknown voice.
-    // The original method just returns voice.charAt(0), so we do the same.
-    (instance as KokoroTTSInstance)._validate_voice = (voice: string): string => voice.charAt(0);
+      // Bypass voice validation entirely — kokoro-js only recognises 28 English
+      // voices and prints a noisy table to the console for every unknown voice.
+      // The original method just returns voice.charAt(0), so we do the same.
+      (instance as KokoroTTSInstance)._validate_voice = (voice: string): string => voice.charAt(0);
 
-    this.tts = instance;
-    this.manifest = manifest;
+      this.tts = instance;
+      this.manifest = manifest;
+    } catch (err) {
+      this.restoreFs?.();
+      this.restoreFs = null;
+      throw err;
+    }
   }
 
   protected async doGenerate(request: GenerateRequest): Promise<AudioResult> {

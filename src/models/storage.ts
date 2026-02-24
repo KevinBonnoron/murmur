@@ -11,7 +11,16 @@ export function getModelsDir(): string {
   return join(getMurmurHome(), 'models');
 }
 
+const SAFE_NAME_RE = /^[A-Za-z0-9_-]+$/;
+
+function validateName(value: string, label: string): void {
+  if (!value || !SAFE_NAME_RE.test(value)) {
+    throw new Error(`Invalid ${label}: ${JSON.stringify(value)}. Must match ${SAFE_NAME_RE}.`);
+  }
+}
+
 export function getModelDir(name: string): string {
+  validateName(name, 'model name');
   return join(getModelsDir(), name);
 }
 
@@ -20,6 +29,7 @@ export function getManifestPath(name: string): string {
 }
 
 export function getVoicePath(name: string, voiceId: string): string {
+  validateName(voiceId, 'voice ID');
   return join(getModelDir(name), 'voices', `${voiceId}.bin`);
 }
 

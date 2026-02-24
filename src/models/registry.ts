@@ -164,12 +164,12 @@ export async function ensureVoice(manifest: ModelManifest, voiceId: string): Pro
   }
 
   consola.info(`Voice ${voiceId} not installed, pulling automatically...`);
-  const builtinManifest = await resolveManifest(manifest.name);
-  const voiceUrl = resolveVoiceUrl(builtinManifest, voiceId);
+  const voiceUrl = resolveVoiceUrl(manifest, voiceId);
   const voiceDest = getVoicePath(manifest.name, voiceId);
   await downloadFile(voiceUrl, voiceDest, undefined, `voices/${voiceId}.bin`);
 
-  const updated = { ...manifest, installed_voices: [...manifest.installed_voices, voiceId] };
+  const existing = manifest.installed_voices ?? [];
+  const updated = { ...manifest, installed_voices: [...existing, voiceId] };
   await saveManifest(updated);
 }
 

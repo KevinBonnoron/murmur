@@ -118,12 +118,17 @@ export class F5InferenceSession {
     const decOut = await this.decoder.run(buildFeeds(this.decoder.inputNames, [noise, refSignalLen]));
     const generated = tensorAt(decOut, this.decoder.outputNames, 0);
 
-    // 6. Post-process
+    // 6. Post-process — normalize to [-1, 1] in audioFloat
     const rawData = generated.data as Float32Array | Int16Array | Int32Array;
-    const audioFloat = new Float32Array(rawData.length);
-    for (let i = 0; i < rawData.length; i++) {
-      // biome-ignore lint/style/noNonNullAssertion: bounded loop
-      audioFloat[i] = Number(rawData[i]!) / 32767.0;
+    let audioFloat: Float32Array;
+    if (rawData instanceof Float32Array) {
+      audioFloat = new Float32Array(rawData);
+    } else {
+      audioFloat = new Float32Array(rawData.length);
+      for (let i = 0; i < rawData.length; i++) {
+        // biome-ignore lint/style/noNonNullAssertion: bounded loop
+        audioFloat[i] = Number(rawData[i]!) / 32767.0;
+      }
     }
 
     // Undo RMS normalization if it was applied during preprocessing

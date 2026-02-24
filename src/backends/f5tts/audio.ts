@@ -227,6 +227,10 @@ export function prepareReferenceAudio(wavBuffer: Buffer): { samples: Float32Arra
   }
 
   const rms = calculateRMS(samples);
+  if (!Number.isFinite(rms) || rms <= 0) {
+    const int16 = normalizeToInt16(samples);
+    return { samples, int16, rms: 0 };
+  }
 
   // Normalize RMS (matching nsarang: refAudio.div(refRMS * targetRMS))
   // The aggressive amplification is compensated by normalizeToInt16's quantile scaling

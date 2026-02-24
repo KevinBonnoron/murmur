@@ -4,14 +4,27 @@ import consola from 'consola';
 
 // Polyfill DecompressionStream for Bun (needed by phonemizer/kokoro-js)
 if (typeof globalThis.DecompressionStream === 'undefined') {
-  const { createInflateRaw, createGunzip } = await import('node:zlib');
+  const { createInflateRaw, createInflate, createGunzip } = await import('node:zlib');
 
   globalThis.DecompressionStream = class DecompressionStream {
     public readable: ReadableStream;
     public writable: WritableStream;
 
     public constructor(format: string) {
-      const decompressor = format === 'gzip' ? createGunzip() : createInflateRaw();
+      let decompressor: import('node:zlib').Gunzip | import('node:zlib').InflateRaw | import('node:zlib').Inflate;
+      switch (format) {
+        case 'gzip':
+          decompressor = createGunzip();
+          break;
+        case 'deflate':
+          decompressor = createInflate();
+          break;
+        case 'deflate-raw':
+          decompressor = createInflateRaw();
+          break;
+        default:
+          throw new TypeError(`Unsupported compression format: ${format}`);
+      }
 
       this.readable = new ReadableStream({
         start(controller) {
