@@ -9,6 +9,7 @@ declare module 'espeak-ng' {
     arguments: string[];
     locateFile?(path: string): string;
     onRuntimeInitialized(this: ESpeakModule): void;
+    onAbort?(reason: unknown): void;
   }
 
   function createEspeak(opts: ESpeakOptions): void;

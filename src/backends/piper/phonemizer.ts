@@ -19,12 +19,15 @@ async function espeakIPA(text: string, lang: string): Promise<string> {
   const { default: createEspeak } = await import('espeak-ng');
   const wasmDir = espeakWasmDir();
 
-  const espeak = await new Promise<import('espeak-ng').ESpeakModule>((resolve) => {
+  const espeak = await new Promise<import('espeak-ng').ESpeakModule>((resolve, reject) => {
     createEspeak({
       arguments: ['--ipa=3', '-v', lang, '-q', '--phonout', 'output.txt', text],
       locateFile: (path: string) => join(wasmDir, path),
       onRuntimeInitialized() {
         resolve(this);
+      },
+      onAbort(reason: unknown) {
+        reject(new Error(`espeak-ng WASM aborted: ${reason}`));
       },
     });
   });
@@ -87,7 +90,7 @@ export async function textToPhonemeIds(text: string, config: PiperModelConfig): 
 
 /** Split text into sentences on sentence-ending punctuation. */
 export function splitSentences(text: string): string[] {
-  const re = /[.!?;:]+\s*/g;
+  const re = /[.!?]+\s*/g;
   const sentences: string[] = [];
   let cursor = 0;
 

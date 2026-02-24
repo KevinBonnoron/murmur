@@ -183,7 +183,10 @@ export class PiperBackend extends BaseTTSBackend {
     if (!outputTensor) {
       throw new Error(`Missing ONNX output tensor: ${outputName}`);
     }
-    return outputTensor.data as Float32Array;
+    if (!(outputTensor.data instanceof Float32Array)) {
+      throw new Error(`Expected float32 output, got: ${outputTensor.type}`);
+    }
+    return outputTensor.data;
   }
 
   /** Get a cached voice or load it on-demand with LRU eviction. */
@@ -277,22 +280,22 @@ export class PiperBackend extends BaseTTSBackend {
       if (!configExists) {
         consola.start(`Downloading Piper voice config: ${voiceId}.onnx.json`);
         const configUrl = buildVoiceUrl(voiceId, '.onnx.json');
-        const response = await fetch(configUrl);
+        const response = await fetch(configUrl, { signal: AbortSignal.timeout(60_000) });
         if (!response.ok) {
           throw new Error(`${response.status} ${response.statusText}`);
         }
-        await Bun.write(configPath, await response.arrayBuffer());
+        await Bun.write(configPath, response);
         consola.success(`Downloaded ${voiceId}.onnx.json`);
       }
 
       if (!onnxExists) {
         consola.start(`Downloading Piper voice model: ${voiceId}.onnx`);
         const onnxUrl = buildVoiceUrl(voiceId, '.onnx');
-        const response = await fetch(onnxUrl);
+        const response = await fetch(onnxUrl, { signal: AbortSignal.timeout(300_000) });
         if (!response.ok) {
           throw new Error(`${response.status} ${response.statusText}`);
         }
-        await Bun.write(onnxPath, await response.arrayBuffer());
+        await Bun.write(onnxPath, response);
         consola.success(`Downloaded ${voiceId}.onnx`);
       }
     } catch {
@@ -303,6 +306,7 @@ export class PiperBackend extends BaseTTSBackend {
   protected async doUnload(): Promise<void> {
     await Promise.allSettled([...this.voices.values()].map((v) => v.session.release()));
     this.voices.clear();
+    this.voiceLoads.clear();
     this.modelPath = null;
     this.manifest = null;
     this.loaded = false;
