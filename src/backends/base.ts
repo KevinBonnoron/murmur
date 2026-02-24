@@ -4,6 +4,7 @@ import type { AudioResult, GenerateRequest, TTSBackend } from './backend.ts';
 
 export abstract class BaseTTSBackend implements TTSBackend {
   protected abstract readonly backendName: string;
+  private loadedDevice?: string;
 
   public abstract isLoaded(): boolean;
 
@@ -12,11 +13,14 @@ export abstract class BaseTTSBackend implements TTSBackend {
   protected abstract doUnload(): Promise<void>;
 
   public async load(modelPath: string, manifest: ModelManifest, variant: ManifestVariant, device?: string): Promise<void> {
+    const resolvedDevice = device ?? 'cpu';
     if (this.isLoaded()) {
+      if (this.loadedDevice && this.loadedDevice !== resolvedDevice) {
+        throw new Error(`${this.backendName} already loaded on '${this.loadedDevice}'. Unload before switching to '${resolvedDevice}'.`);
+      }
       return;
     }
 
-    const resolvedDevice = device ?? 'cpu';
     consola.start(`Loading ${this.backendName} model from ${modelPath} (device: ${resolvedDevice})...`);
     try {
       await this.doLoad(modelPath, manifest, variant, resolvedDevice);
@@ -26,6 +30,7 @@ export abstract class BaseTTSBackend implements TTSBackend {
       }
       throw err;
     }
+    this.loadedDevice = resolvedDevice;
     consola.success(`${this.backendName} model loaded (device: ${resolvedDevice})`);
   }
 
@@ -46,6 +51,7 @@ export abstract class BaseTTSBackend implements TTSBackend {
       return;
     }
     await this.doUnload();
+    this.loadedDevice = undefined;
     consola.info(`${this.backendName} model unloaded`);
   }
 }

@@ -28,6 +28,9 @@ export const generateRoutes = new Hono().post('/', async (c) => {
   if (!input) {
     return c.json({ error: 'Missing required field: input' }, 400);
   }
+  if (device && !['auto', 'cpu', 'cuda', 'tensorrt'].includes(device)) {
+    return c.json({ error: `Invalid device: ${device}` }, 400);
+  }
 
   try {
     const manifest = await findModel(model);

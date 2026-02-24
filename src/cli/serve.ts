@@ -21,7 +21,7 @@ export default defineCommand({
     device: {
       type: 'enum',
       alias: 'd',
-      description: 'Default device for inference (auto, cpu, cuda)',
+      description: 'Default device for inference (auto, cpu, cuda, tensorrt)',
       default: 'auto',
       options: ['auto', 'cpu', 'cuda', 'tensorrt'],
     },

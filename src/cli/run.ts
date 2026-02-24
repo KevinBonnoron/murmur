@@ -52,7 +52,7 @@ export default defineCommand({
     device: {
       type: 'enum',
       alias: 'd',
-      description: 'Device to run inference on (auto, cpu, cuda)',
+      description: 'Device to run inference on (auto, cpu, cuda, tensorrt)',
       default: 'auto',
       options: ['auto', 'cpu', 'cuda', 'tensorrt'],
     },

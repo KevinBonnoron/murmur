@@ -47,9 +47,13 @@ function detectCuda(): { available: boolean; reason?: string } {
     if (!smiPath) {
       return { available: false, reason: 'no NVIDIA GPU detected (nvidia-smi not found)' };
     }
-    const smi = Bun.spawnSync([smiPath], { stdout: 'ignore', stderr: 'ignore' });
+    const smi = Bun.spawnSync([smiPath], { stdout: 'pipe', stderr: 'ignore' });
     if (smi.exitCode !== 0) {
       return { available: false, reason: 'no NVIDIA GPU detected' };
+    }
+    const smiOut = smi.stdout.toString();
+    if (/No devices were found|Failed to initialize NVML|NVIDIA-SMI has failed/i.test(smiOut)) {
+      return { available: false, reason: 'no NVIDIA GPU detected (nvidia-smi reported no devices)' };
     }
 
     // 2. Build ldconfig cache for library lookups
