@@ -28,12 +28,12 @@ export function parsePiperConfig(json: unknown): PiperModelConfig {
   }
 
   const audio = obj.audio as PiperAudioConfig | undefined;
-  if (!audio?.sample_rate) {
-    throw new Error('Invalid Piper config: missing audio.sample_rate');
+  if (typeof audio?.sample_rate !== 'number' || !Number.isFinite(audio.sample_rate) || audio.sample_rate <= 0) {
+    throw new Error('Invalid Piper config: missing or invalid audio.sample_rate');
   }
 
   const espeak = obj.espeak as PiperEspeakConfig | undefined;
-  if (!espeak?.voice) {
+  if (typeof espeak?.voice !== 'string' || !espeak.voice) {
     throw new Error('Invalid Piper config: missing espeak.voice');
   }
 

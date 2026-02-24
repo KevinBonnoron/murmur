@@ -5,7 +5,13 @@
   "backend": "piper",
   "license": "MIT",
   "files": [],
-  "variants": {},
+  "variants": {
+    "default": {
+      "file": "backend-managed.onnx",
+      "dtype": "onnx",
+      "url": ""
+    }
+  },
   "voice_url": "",
   "defaults": {
     "variant": "default",

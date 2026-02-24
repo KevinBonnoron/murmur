@@ -1,5 +1,5 @@
 import { mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import consola from 'consola';
 import type { InferenceSession } from 'onnxruntime-node';
 import type { ManifestVariant, ModelManifest } from '../../models/manifest.ts';
@@ -87,6 +87,7 @@ export class PiperBackend extends BaseTTSBackend {
   protected readonly backendName = 'Piper';
 
   private readonly voices = new Map<string, LoadedVoice>();
+  private readonly voiceLoads = new Map<string, Promise<LoadedVoice>>();
   private modelPath: string | null = null;
   private manifest: ModelManifest | null = null;
   private loaded = false;
@@ -111,6 +112,9 @@ export class PiperBackend extends BaseTTSBackend {
     const voice = await this.getOrLoadVoice(modelPath, voiceId);
     const sampleRate = voice.config.audio.sample_rate;
     const speed = request.speed ?? 1.0;
+    if (!Number.isFinite(speed) || speed <= 0) {
+      throw new Error('speed must be a positive number');
+    }
 
     // Split text into sentences and generate each one separately,
     // inserting real silence samples between them.
@@ -192,6 +196,22 @@ export class PiperBackend extends BaseTTSBackend {
       return cached;
     }
 
+    // Deduplicate concurrent loads for the same voice
+    const pending = this.voiceLoads.get(voiceId);
+    if (pending) {
+      return pending;
+    }
+
+    const loadPromise = this.loadVoice(modelPath, voiceId);
+    this.voiceLoads.set(voiceId, loadPromise);
+    try {
+      return await loadPromise;
+    } finally {
+      this.voiceLoads.delete(voiceId);
+    }
+  }
+
+  private async loadVoice(modelPath: string, voiceId: string): Promise<LoadedVoice> {
     await this.ensurePiperVoice(modelPath, voiceId);
 
     // Load config
@@ -236,7 +256,11 @@ export class PiperBackend extends BaseTTSBackend {
    * Otherwise, attempts to download from HuggingFace rhasspy/piper-voices.
    */
   private async ensurePiperVoice(modelPath: string, voiceId: string): Promise<void> {
-    const voiceDir = join(modelPath, 'voices', voiceId);
+    const baseDir = resolve(modelPath, 'voices');
+    const voiceDir = resolve(baseDir, voiceId);
+    if (!voiceDir.startsWith(baseDir + sep)) {
+      throw new Error(`Invalid voice ID: ${voiceId}`);
+    }
     const onnxPath = join(voiceDir, `${voiceId}.onnx`);
     const configPath = join(voiceDir, `${voiceId}.onnx.json`);
 

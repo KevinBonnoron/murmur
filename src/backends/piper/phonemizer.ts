@@ -52,15 +52,32 @@ export async function textToPhonemeIds(text: string, config: PiperModelConfig): 
   const bosId = BigInt(phonemeIdMap['^']?.[0] ?? padId);
   const eosId = BigInt(phonemeIdMap.$?.[0] ?? padId);
 
+  // Sort map keys by descending length for greedy longest-key matching.
+  // This avoids splitting multi-character IPA symbols (e.g. affricates).
+  const sortedKeys = Object.keys(phonemeIdMap).sort((a, b) => b.length - a.length);
+
   const ids: bigint[] = [bosId];
 
-  for (const char of Array.from(ipa)) {
-    const mapped = phonemeIdMap[char];
-    if (mapped && mapped.length > 0) {
-      for (const id of mapped) {
-        ids.push(BigInt(id));
+  let cursor = 0;
+  while (cursor < ipa.length) {
+    let matched = false;
+    for (const key of sortedKeys) {
+      if (ipa.startsWith(key, cursor) && key.length > 0) {
+        const mapped = phonemeIdMap[key];
+        if (mapped && mapped.length > 0) {
+          for (const id of mapped) {
+            ids.push(BigInt(id));
+          }
+          ids.push(padId);
+        }
+        cursor += key.length;
+        matched = true;
+        break;
       }
-      ids.push(padId);
+    }
+    if (!matched) {
+      // Skip unrecognized character
+      cursor++;
     }
   }
 
