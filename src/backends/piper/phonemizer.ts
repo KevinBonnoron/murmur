@@ -1,5 +1,9 @@
+import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { PiperModelConfig } from './config.ts';
+
+const esmRequire = createRequire(import.meta.url);
 
 /** Resolve the directory containing the espeak-ng WASM file. */
 function espeakWasmDir(): string {
@@ -8,9 +12,9 @@ function espeakWasmDir(): string {
     return libDir;
   }
   try {
-    return dirname(require.resolve('espeak-ng/dist/espeak-ng.wasm'));
+    return dirname(esmRequire.resolve('espeak-ng/dist/espeak-ng.wasm'));
   } catch {
-    return dirname(new URL(import.meta.url).pathname);
+    return dirname(fileURLToPath(import.meta.url));
   }
 }
 
@@ -20,13 +24,18 @@ async function espeakIPA(text: string, lang: string): Promise<string> {
   const wasmDir = espeakWasmDir();
 
   const espeak = await new Promise<import('espeak-ng').ESpeakModule>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error('espeak-ng WASM initialization timed out'));
+    }, 10_000);
     createEspeak({
       arguments: ['--ipa=3', '-v', lang, '-q', '--phonout', 'output.txt', text],
       locateFile: (path: string) => join(wasmDir, path),
       onRuntimeInitialized() {
+        clearTimeout(timeout);
         resolve(this);
       },
       onAbort(reason: unknown) {
+        clearTimeout(timeout);
         reject(new Error(`espeak-ng WASM aborted: ${reason}`));
       },
     });
@@ -110,5 +119,9 @@ export function splitSentences(text: string): string[] {
     sentences.push(tail);
   }
 
-  return sentences.length > 0 ? sentences : [text.trim()];
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return [];
+  }
+  return sentences.length > 0 ? sentences : [trimmed];
 }
