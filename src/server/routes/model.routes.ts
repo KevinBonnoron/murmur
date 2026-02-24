@@ -28,7 +28,13 @@ export const modelRoutes = new Hono()
   // POST /api/models/pull — pull a model (streaming progress)
   .post('/pull', (c) => {
     return honoStream(c, async (stream) => {
-      const body = await c.req.json();
+      let body: unknown;
+      try {
+        body = await c.req.json();
+      } catch {
+        stream.write(`${JSON.stringify({ error: 'Invalid JSON body' })}\n`);
+        return;
+      }
       const { name, variant, voice } = body as { name?: string; variant?: string; voice?: string };
 
       if (!name) {

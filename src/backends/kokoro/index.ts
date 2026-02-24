@@ -22,24 +22,50 @@ type KokoroTTSInstance = {
  * are redirected to the murmur model storage path. This is needed because
  * kokoro-js resolves voices relative to its own __dirname, which is wrong
  * inside a compiled Bun binary.
+ *
+ * Uses ref-counting so multiple KokoroBackend instances share a single patch
+ * and only restore the original when the last instance unloads.
  */
-function patchVoiceReadFile(modelPath: string): () => void {
-  const original = fs.readFile;
-  const voicesDir = join(modelPath, 'voices');
+let patchRefCount = 0;
+let originalReadFile: typeof fs.readFile | null = null;
+const patchedVoicesDirs = new Set<string>();
 
-  // biome-ignore lint/suspicious/noExplicitAny: patching a polymorphic Node API
-  (fs as any).readFile = async function patchedReadFile(path: any, ...args: any[]) {
-    if (typeof path === 'string' && path.endsWith('.bin') && path.includes('/voices/')) {
-      const filename = basename(path);
-      const redirected = join(voicesDir, filename);
-      return original.call(fs, redirected, ...args);
-    }
-    return original.call(fs, path, ...args);
-  };
+function patchVoiceReadFile(modelPath: string): () => void {
+  const voicesDir = join(modelPath, 'voices');
+  patchedVoicesDirs.add(voicesDir);
+
+  if (patchRefCount === 0) {
+    originalReadFile = fs.readFile;
+    const saved = originalReadFile;
+
+    // biome-ignore lint/suspicious/noExplicitAny: patching a polymorphic Node API
+    (fs as any).readFile = async function patchedReadFile(path: any, ...args: any[]) {
+      if (typeof path === 'string' && path.endsWith('.bin') && path.includes('/voices/')) {
+        const filename = basename(path);
+        // Try each registered voices dir
+        for (const dir of patchedVoicesDirs) {
+          const redirected = join(dir, filename);
+          try {
+            return await saved.call(fs, redirected, ...args);
+          } catch {
+            // Try next dir
+          }
+        }
+      }
+      return saved.call(fs, path, ...args);
+    };
+  }
+
+  patchRefCount++;
 
   return () => {
-    // biome-ignore lint/suspicious/noExplicitAny: restoring original
-    (fs as any).readFile = original;
+    patchedVoicesDirs.delete(voicesDir);
+    patchRefCount--;
+    if (patchRefCount === 0 && originalReadFile) {
+      // biome-ignore lint/suspicious/noExplicitAny: restoring original
+      (fs as any).readFile = originalReadFile;
+      originalReadFile = null;
+    }
   };
 }
 

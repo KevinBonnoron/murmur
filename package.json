@@ -16,7 +16,7 @@
     "build": "bash scripts/build.sh"
   },
   "dependencies": {
-    "citty": "^0.1.6",
+    "citty": "^0.2.1",
     "consola": "^3.4.0",
     "espeak-ng": "^1.0.2",
     "hono": "^4.7.0",

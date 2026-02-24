@@ -42,6 +42,12 @@ export class F5TTSBackend extends BaseTTSBackend {
     if (!referenceText) {
       throw new Error('F5-TTS requires reference text (referenceText)');
     }
+    if (!Number.isFinite(speed) || speed <= 0) {
+      throw new Error('F5-TTS speed must be a positive number');
+    }
+    if (!Number.isInteger(nfeSteps) || nfeSteps < 1) {
+      throw new Error('F5-TTS nfeSteps must be a positive integer');
+    }
 
     // Prepare reference audio (decode, mono, resample, normalize)
     const { int16: refInt16, rms: refRms } = prepareReferenceAudio(referenceAudio);

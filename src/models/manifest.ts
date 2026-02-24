@@ -51,21 +51,24 @@ export function parseManifest(json: unknown): ModelManifest {
   if (typeof obj.voice_url !== 'string') {
     throw new Error('Invalid manifest: missing "voice_url"');
   }
+  const rawDefaults = obj.defaults && typeof obj.defaults === 'object' ? (obj.defaults as Partial<ManifestDefaults>) : {};
+  const defaults: ManifestDefaults = {
+    variant: typeof rawDefaults.variant === 'string' ? rawDefaults.variant : 'default',
+    voice: typeof rawDefaults.voice === 'string' ? rawDefaults.voice : '',
+    sample_rate: typeof rawDefaults.sample_rate === 'number' ? rawDefaults.sample_rate : 24000,
+    response_format: typeof rawDefaults.response_format === 'string' ? rawDefaults.response_format : 'wav',
+  };
+
   return {
     name: obj.name,
-    description: (obj.description as string) ?? '',
+    description: typeof obj.description === 'string' ? obj.description : '',
     backend: obj.backend,
-    license: (obj.license as string) ?? '',
+    license: typeof obj.license === 'string' ? obj.license : '',
     files: obj.files as ManifestFile[],
     variants: obj.variants as Record<string, ManifestVariant>,
     voice_url: obj.voice_url,
-    installed_voices: (obj.installed_voices as string[]) ?? [],
-    defaults: (obj.defaults as ManifestDefaults) ?? {
-      variant: 'default',
-      voice: '',
-      sample_rate: 24000,
-      response_format: 'wav',
-    },
+    installed_voices: Array.isArray(obj.installed_voices) ? (obj.installed_voices as string[]) : [],
+    defaults,
   };
 }
 

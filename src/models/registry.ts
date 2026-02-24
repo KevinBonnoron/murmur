@@ -1,11 +1,9 @@
-import { mkdir } from 'node:fs/promises';
+import { mkdir, rename, unlink } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
-
 import consola from 'consola';
-
 import f5ttsManifest from '../../manifests/f5tts.json';
 import kokoroManifest from '../../manifests/kokoro.json';
-import { type ModelManifest, getVariant, parseManifest, parseModelRef, resolveVoiceUrl } from './manifest.ts';
+import { getVariant, type ModelManifest, parseManifest, parseModelRef, resolveVoiceUrl } from './manifest.ts';
 import { getModelDir, getVoicePath, isModelInstalled, isVoiceInstalled, listInstalledModels, loadManifest, saveManifest } from './storage.ts';
 
 const BUILTIN_MODELS: Record<string, object> = {
@@ -51,20 +49,28 @@ async function downloadFile(url: string, destPath: string, expectedSize: number 
     throw new Error(`No response body for ${url}`);
   }
 
-  const writer = Bun.file(destPath).writer();
+  const tmpPath = `${destPath}.tmp`;
+  const writer = Bun.file(tmpPath).writer();
   const reader = response.body.getReader();
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) {
-      break;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      writer.write(value);
+      downloaded += value.byteLength;
+      onProgress?.({ file: label, downloaded, total, done: false });
     }
-    writer.write(value);
-    downloaded += value.byteLength;
-    onProgress?.({ file: label, downloaded, total, done: false });
+    await writer.end();
+  } catch (err) {
+    await writer.end();
+    await unlink(tmpPath).catch(() => {});
+    throw err;
   }
 
-  await writer.end();
+  await rename(tmpPath, destPath);
   onProgress?.({ file: label, downloaded, total, done: true });
   consola.success(`Downloaded ${label}`);
 }
@@ -117,13 +123,15 @@ export async function pullModel(nameOrPath: string, options?: PullOptions, onPro
 
     // Download the default voice (if the model uses pre-built voices)
     const defaultVoice = builtinManifest.defaults.voice;
+    let installedVoices: string[] = [];
     if (defaultVoice && builtinManifest.voice_url) {
       const voiceUrl = resolveVoiceUrl(builtinManifest, defaultVoice);
       const voiceDest = getVoicePath(builtinManifest.name, defaultVoice);
       await downloadFile(voiceUrl, voiceDest, undefined, `voices/${defaultVoice}.bin`, onProgress);
+      installedVoices = [defaultVoice];
     }
 
-    manifest = { ...builtinManifest, installed_voices: defaultVoice ? [defaultVoice] : [] };
+    manifest = { ...builtinManifest, installed_voices: installedVoices };
     consola.success(`Model ${builtinManifest.name} pulled successfully`);
   } else {
     // Model already installed — check if this variant's ONNX is present
@@ -159,7 +167,7 @@ export async function pullModel(nameOrPath: string, options?: PullOptions, onPro
 }
 
 export async function ensureVoice(manifest: ModelManifest, voiceId: string): Promise<void> {
-  if (!manifest.voice_url || await isVoiceInstalled(manifest.name, voiceId)) {
+  if (!manifest.voice_url || (await isVoiceInstalled(manifest.name, voiceId))) {
     return;
   }
 

@@ -87,14 +87,25 @@ Example:
       referenceAudio = Buffer.from(await file.arrayBuffer());
     }
 
+    const speed = Number.parseFloat(args.speed);
+    if (Number.isNaN(speed)) {
+      consola.error(`Invalid --speed value: ${args.speed}`);
+      process.exit(1);
+    }
+    const nfeSteps = args['nfe-steps'] ? Number.parseInt(args['nfe-steps'], 10) : undefined;
+    if (nfeSteps !== undefined && Number.isNaN(nfeSteps)) {
+      consola.error(`Invalid --nfe-steps value: ${args['nfe-steps']}`);
+      process.exit(1);
+    }
+
     const result = await backend.generate({
       text: args.text,
       voice,
-      speed: Number.parseFloat(args.speed),
+      speed,
       format: 'wav',
       referenceAudio,
       referenceText: args['reference-text'],
-      nfeSteps: args['nfe-steps'] ? Number.parseInt(args['nfe-steps'], 10) : undefined,
+      nfeSteps,
     });
 
     await Bun.write(args.output, result.audio);

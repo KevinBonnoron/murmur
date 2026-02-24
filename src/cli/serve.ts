@@ -20,6 +20,10 @@ export default defineCommand({
   },
   async run({ args }) {
     const port = Number.parseInt(args.port, 10);
+    if (!Number.isFinite(port) || port < 1 || port > 65535) {
+      throw new Error(`Invalid port: ${args.port}`);
+    }
+
     const host = args.host;
     const app = createApp();
 

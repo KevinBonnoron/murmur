@@ -34,6 +34,9 @@ export abstract class BaseTTSBackend implements TTSBackend {
   }
 
   public async unload(): Promise<void> {
+    if (!this.isLoaded()) {
+      return;
+    }
     await this.doUnload();
     consola.info(`${this.backendName} model unloaded`);
   }

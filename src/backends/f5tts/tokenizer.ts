@@ -14,7 +14,7 @@ export class F5Tokenizer {
 
   public tokenize(text: string): Int32Array {
     const tokens: number[] = [];
-    for (const char of text.split('')) {
+    for (const char of Array.from(text)) {
       tokens.push(this.charToIndex.get(char) ?? 0);
     }
     return Int32Array.from(tokens);

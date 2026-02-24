@@ -11,6 +11,10 @@ echo "Compiling binary..."
 bun build --compile "$ROOT/src/main.ts" --outfile "$DIST/bin/murmur-bin"
 
 echo "Copying native libraries..."
+if [[ "$(uname -s)" != "Linux" || "$(uname -m)" != "x86_64" ]]; then
+  echo "Error: build.sh currently supports only Linux x86_64" >&2
+  exit 1
+fi
 ONNX_DIR="$ROOT/node_modules/onnxruntime-node/bin/napi-v6/linux/x64"
 cp "$ONNX_DIR/libonnxruntime.so.1" "$DIST/lib/"
 cp "$ONNX_DIR/onnxruntime_binding.node" "$DIST/lib/"

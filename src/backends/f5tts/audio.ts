@@ -10,6 +10,10 @@ interface WavData {
 export function decodeWav(buffer: Buffer): WavData {
   const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
 
+  if (view.byteLength < 12) {
+    throw new Error('Invalid WAV: file too small');
+  }
+
   // RIFF header
   const riff = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3));
   if (riff !== 'RIFF') {
@@ -30,11 +34,14 @@ export function decodeWav(buffer: Buffer): WavData {
   let dataOffset = 0;
   let dataSize = 0;
 
-  while (offset < view.byteLength - 8) {
+  while (offset + 8 <= view.byteLength) {
     const chunkId = String.fromCharCode(view.getUint8(offset), view.getUint8(offset + 1), view.getUint8(offset + 2), view.getUint8(offset + 3));
     const chunkSize = view.getUint32(offset + 4, true);
 
     if (chunkId === 'fmt ') {
+      if (chunkSize < 16 || offset + 8 + chunkSize > view.byteLength) {
+        throw new Error('Invalid WAV: fmt chunk truncated');
+      }
       audioFormat = view.getUint16(offset + 8, true);
       channels = view.getUint16(offset + 10, true);
       sampleRate = view.getUint32(offset + 12, true);
@@ -54,6 +61,12 @@ export function decodeWav(buffer: Buffer): WavData {
 
   if (dataOffset === 0) {
     throw new Error('Invalid WAV: missing data chunk');
+  }
+
+  // Clamp dataSize to available bytes
+  const availableBytes = view.byteLength - dataOffset;
+  if (dataSize > availableBytes) {
+    dataSize = availableBytes;
   }
 
   // PCM = 1, IEEE float = 3
@@ -146,6 +159,9 @@ export function resample(samples: Float32Array, fromRate: number, toRate: number
 }
 
 export function calculateRMS(samples: Float32Array): number {
+  if (samples.length === 0) {
+    return 0;
+  }
   let sumSq = 0;
   for (let i = 0; i < samples.length; i++) {
     // biome-ignore lint/style/noNonNullAssertion: bounded loop

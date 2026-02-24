@@ -19,7 +19,7 @@ export default defineCommand({
     for (const model of models) {
       const totalSize = model.files.reduce((sum, f) => sum + (f.size ?? 0), 0);
       const sizeMb = (totalSize / 1024 / 1024).toFixed(0);
-      const voiceCount = model.installed_voices.length;
+      const voiceCount = model.installed_voices?.length ?? 0;
 
       consola.log(`  ${model.name.padEnd(20)} ${model.backend.padEnd(10)} ${sizeMb.padStart(6)} MB   ${voiceCount} voices`);
     }

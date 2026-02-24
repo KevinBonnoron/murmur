@@ -1,9 +1,8 @@
 import { join } from 'node:path';
 import type { InferenceSession, Tensor } from 'onnxruntime-node';
-import { TARGET_RMS } from './audio.ts';
+import { TARGET_RMS, TARGET_SAMPLE_RATE } from './audio.ts';
 
 const HOP_LENGTH = 256;
-const TARGET_SAMPLE_RATE = 24_000;
 
 interface F5InferenceOptions {
   readonly refInt16: Int16Array;
@@ -82,6 +81,10 @@ export class F5InferenceSession {
     const { Tensor: OrtTensor } = await import('onnxruntime-node');
 
     // 1. Calculate duration
+    if (options.speed <= 0) {
+      throw new Error('F5 inference speed must be > 0');
+    }
+
     const refAudioLen = Math.floor(options.refInt16.length / HOP_LENGTH);
     const duration = refAudioLen + Math.floor(((refAudioLen / (options.refTextLength + 1)) * options.genTextLength) / options.speed);
 
@@ -123,6 +126,12 @@ export class F5InferenceSession {
     let audioFloat: Float32Array;
     if (rawData instanceof Float32Array) {
       audioFloat = new Float32Array(rawData);
+    } else if (rawData instanceof Int32Array) {
+      audioFloat = new Float32Array(rawData.length);
+      for (let i = 0; i < rawData.length; i++) {
+        // biome-ignore lint/style/noNonNullAssertion: bounded loop
+        audioFloat[i] = Number(rawData[i]!) / 2147483647.0;
+      }
     } else {
       audioFloat = new Float32Array(rawData.length);
       for (let i = 0; i < rawData.length; i++) {
@@ -131,7 +140,9 @@ export class F5InferenceSession {
       }
     }
 
-    // Undo RMS normalization if it was applied during preprocessing
+    // Undo RMS normalization — only needed when refRms < TARGET_RMS because
+    // prepareReferenceAudio only scales up (never down), so no compensation
+    // is required when refRms >= TARGET_RMS.
     if (options.refRms < TARGET_RMS) {
       const scale = options.refRms / TARGET_RMS;
       for (let i = 0; i < audioFloat.length; i++) {
@@ -158,7 +169,7 @@ export class F5InferenceSession {
   }
 
   public async release(): Promise<void> {
-    await Promise.allSettled([this.encoder?.release(), this.transformer?.release(), this.decoder?.release()]);
+    await Promise.allSettled([this.encoder, this.transformer, this.decoder].filter((s): s is InferenceSession => s !== null).map((s) => s.release()));
     this.encoder = null;
     this.transformer = null;
     this.decoder = null;

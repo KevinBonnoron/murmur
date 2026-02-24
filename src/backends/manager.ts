@@ -68,6 +68,17 @@ export async function getBackend(manifest: ModelManifest, variantKey?: string): 
 export async function unloadBackend(manifest: ModelManifest, variantKey?: string): Promise<void> {
   const resolvedKey = variantKey ?? manifest.defaults.variant;
   const key = backendKey(manifest.name, resolvedKey);
+
+  // Wait for any in-flight load to complete before unloading
+  const pending = inFlightLoads.get(key);
+  if (pending) {
+    try {
+      await pending;
+    } catch {
+      // Load failed — still clean up
+    }
+  }
+
   const backend = loadedBackends.get(key);
   if (backend) {
     await backend.unload();
@@ -76,9 +87,6 @@ export async function unloadBackend(manifest: ModelManifest, variantKey?: string
 }
 
 export async function unloadAll(): Promise<void> {
-  for (const backend of loadedBackends.values()) {
-    await backend.unload();
-  }
-
+  await Promise.allSettled([...loadedBackends.values()].map((b) => b.unload()));
   loadedBackends.clear();
 }
