@@ -1,0 +1,16 @@
+{
+  "$schema": "./manifest.schema.json",
+  "name": "piper",
+  "description": "Piper TTS — fast, lightweight, multilingual neural TTS (VITS-based, ONNX)",
+  "backend": "piper",
+  "license": "MIT",
+  "files": [],
+  "variants": {},
+  "voice_url": "",
+  "defaults": {
+    "variant": "default",
+    "voice": "en_US-lessac-medium",
+    "sample_rate": 22050,
+    "response_format": "wav"
+  }
+}

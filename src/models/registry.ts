@@ -3,12 +3,14 @@ import { dirname, join, resolve } from 'node:path';
 import consola from 'consola';
 import f5ttsManifest from '../../manifests/f5tts.json';
 import kokoroManifest from '../../manifests/kokoro.json';
+import piperManifest from '../../manifests/piper.json';
 import { getVariant, type ModelManifest, parseManifest, parseModelRef, resolveVoiceUrl } from './manifest.ts';
 import { getModelDir, getVoicePath, isModelInstalled, isVoiceInstalled, listInstalledModels, loadManifest, saveManifest } from './storage.ts';
 
 const BUILTIN_MODELS: Record<string, object> = {
   kokoro: kokoroManifest,
   f5tts: f5ttsManifest,
+  piper: piperManifest,
 };
 
 export interface PullProgress {
@@ -117,9 +119,11 @@ export async function pullModel(nameOrPath: string, options?: PullOptions, onPro
       await downloadFile(file.url, destPath, file.size, file.name, onProgress);
     }
 
-    // Download the requested variant's ONNX file
-    const variantDest = join(modelDir, variant.file);
-    await downloadFile(variant.url, variantDest, variant.size, variant.file, onProgress);
+    // Download the requested variant's ONNX file (skip if no URL — backend manages its own files)
+    if (variant.url) {
+      const variantDest = join(modelDir, variant.file);
+      await downloadFile(variant.url, variantDest, variant.size, variant.file, onProgress);
+    }
 
     // Download the default voice (if the model uses pre-built voices)
     const defaultVoice = builtinManifest.defaults.voice;
@@ -135,11 +139,15 @@ export async function pullModel(nameOrPath: string, options?: PullOptions, onPro
     consola.success(`Model ${builtinManifest.name} pulled successfully`);
   } else {
     // Model already installed — check if this variant's ONNX is present
-    const variantDest = join(modelDir, variant.file);
-    const variantExists = await Bun.file(variantDest).exists();
-    if (!variantExists) {
-      await downloadFile(variant.url, variantDest, variant.size, variant.file, onProgress);
-      consola.success(`Variant ${variantKey} pulled for ${builtinManifest.name}`);
+    if (variant.url) {
+      const variantDest = join(modelDir, variant.file);
+      const variantExists = await Bun.file(variantDest).exists();
+      if (!variantExists) {
+        await downloadFile(variant.url, variantDest, variant.size, variant.file, onProgress);
+        consola.success(`Variant ${variantKey} pulled for ${builtinManifest.name}`);
+      } else {
+        consola.info(`Model ${builtinManifest.name} (${variantKey}) is already installed`);
+      }
     } else {
       consola.info(`Model ${builtinManifest.name} (${variantKey}) is already installed`);
     }
