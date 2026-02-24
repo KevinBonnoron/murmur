@@ -10,7 +10,7 @@ export const generateRoutes = new Hono().post('/', async (c) => {
     return c.json({ error: 'Invalid JSON body' }, 400);
   }
 
-  const { model, input, voice, speed, variant, reference_audio, reference_text, nfe_steps } = body as {
+  const { model, input, voice, speed, variant, reference_audio, reference_text, nfe_steps, device } = body as {
     model?: string;
     input?: string;
     voice?: string;
@@ -19,6 +19,7 @@ export const generateRoutes = new Hono().post('/', async (c) => {
     reference_audio?: string;
     reference_text?: string;
     nfe_steps?: number;
+    device?: string;
   };
 
   if (!model) {
@@ -27,12 +28,15 @@ export const generateRoutes = new Hono().post('/', async (c) => {
   if (!input) {
     return c.json({ error: 'Missing required field: input' }, 400);
   }
+  if (device && !['auto', 'cpu', 'cuda', 'tensorrt'].includes(device)) {
+    return c.json({ error: `Invalid device: ${device}` }, 400);
+  }
 
   try {
     const manifest = await findModel(model);
     const resolvedVoice = voice ?? manifest.defaults.voice;
     await ensureVoice(manifest, resolvedVoice);
-    const backend = await getBackend(manifest, variant);
+    const backend = await getBackend(manifest, variant, device);
 
     const referenceAudio = reference_audio ? Buffer.from(reference_audio, 'base64') : undefined;
 

@@ -54,11 +54,11 @@ export class F5InferenceSession {
     return this.encoder !== null && this.transformer !== null && this.decoder !== null;
   }
 
-  public async load(modelPath: string, variantFile: string): Promise<void> {
+  public async load(modelPath: string, variantFile: string, device?: string): Promise<void> {
     const ort = await import('onnxruntime-node');
 
     const sessionOptions: InferenceSession.SessionOptions = {
-      executionProviders: ['cpu'],
+      executionProviders: [device ?? 'cpu'],
       graphOptimizationLevel: 'all',
     };
 

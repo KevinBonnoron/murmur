@@ -1,5 +1,6 @@
 import { defineCommand } from 'citty';
 import consola from 'consola';
+import { setDefaultDevice } from '../backends/manager.ts';
 import { createApp } from '../server/app.ts';
 
 export default defineCommand({
@@ -17,6 +18,13 @@ export default defineCommand({
       description: 'Host to bind to',
       default: '0.0.0.0',
     },
+    device: {
+      type: 'enum',
+      alias: 'd',
+      description: 'Default device for inference (auto, cpu, cuda, tensorrt)',
+      default: 'auto',
+      options: ['auto', 'cpu', 'cuda', 'tensorrt'],
+    },
   },
   async run({ args }) {
     const port = Number.parseInt(args.port, 10);
@@ -25,6 +33,7 @@ export default defineCommand({
     }
 
     const host = args.host;
+    setDefaultDevice(args.device);
     const app = createApp();
 
     const server = Bun.serve({

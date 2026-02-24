@@ -80,14 +80,15 @@ export class KokoroBackend extends BaseTTSBackend {
     return this.tts !== null;
   }
 
-  protected async doLoad(modelPath: string, manifest: ModelManifest, variant: ManifestVariant): Promise<void> {
+  protected async doLoad(modelPath: string, manifest: ModelManifest, variant: ManifestVariant, device: string): Promise<void> {
     this.restoreFs = patchVoiceReadFile(modelPath);
 
     try {
       const { KokoroTTS } = await import('kokoro-js');
       const instance = await KokoroTTS.from_pretrained(modelPath, {
         dtype: variant.dtype as 'q8' | 'fp32' | 'fp16' | 'q4' | 'q4f16',
-        device: 'cpu',
+        // biome-ignore lint/suspicious/noExplicitAny: device support varies by runtime (cpu, cuda, webgpu, wasm)
+        device: device as any,
       });
 
       // Bypass voice validation entirely — kokoro-js only recognises 28 English
