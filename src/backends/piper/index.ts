@@ -90,15 +90,17 @@ export class PiperBackend extends BaseTTSBackend {
   private readonly voiceLoads = new Map<string, Promise<LoadedVoice>>();
   private modelPath: string | null = null;
   private manifest: ModelManifest | null = null;
+  private device = 'cpu';
   private loaded = false;
 
   public isLoaded(): boolean {
     return this.loaded;
   }
 
-  protected async doLoad(modelPath: string, manifest: ModelManifest, _variant: ManifestVariant): Promise<void> {
+  protected async doLoad(modelPath: string, manifest: ModelManifest, _variant: ManifestVariant, device: string): Promise<void> {
     this.modelPath = modelPath;
     this.manifest = manifest;
+    this.device = device;
     this.loaded = true;
     // Voice ONNX sessions are loaded on-demand in doGenerate since
     // each Piper voice is a separate ONNX model.
@@ -231,7 +233,7 @@ export class PiperBackend extends BaseTTSBackend {
     const onnxPath = join(voiceDir, `${voiceId}.onnx`);
     consola.start(`Loading Piper voice: ${voiceId}`);
     const session = await ort.InferenceSession.create(onnxPath, {
-      executionProviders: ['cpu'],
+      executionProviders: [this.device],
       graphOptimizationLevel: 'all',
     });
     consola.success(`Loaded Piper voice: ${voiceId}`);
