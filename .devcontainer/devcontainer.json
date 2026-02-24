@@ -1,0 +1,19 @@
+{
+  "name": "Murmur",
+  "image": "ghcr.io/nhaef/devcontainer-bun:latest",
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.12",
+      "installTools": true
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "Anthropic.claude-code",
+        "biomejs.biome",
+        "github.vscode-github-actions"
+      ]
+    }
+  }
+}

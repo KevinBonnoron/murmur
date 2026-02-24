@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Murmur Model Manifest",
+  "description": "Schema for Murmur TTS model manifest files",
+  "type": "object",
+  "required": ["name", "backend", "files", "variants", "voice_url", "defaults"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "name": {
+      "type": "string",
+      "description": "Model identifier (e.g. kokoro)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable model description"
+    },
+    "backend": {
+      "type": "string",
+      "description": "Backend engine to use (e.g. kokoro)"
+    },
+    "license": {
+      "type": "string",
+      "description": "License identifier (e.g. Apache-2.0)"
+    },
+    "files": {
+      "type": "array",
+      "description": "Base files to download (config, tokenizer, etc.)",
+      "items": {
+        "type": "object",
+        "required": ["name", "url"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Relative file path within the model directory"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Download URL"
+          },
+          "sha256": {
+            "type": "string",
+            "description": "SHA-256 checksum for integrity verification"
+          },
+          "size": {
+            "type": "number",
+            "description": "Expected file size in bytes"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "variants": {
+      "type": "object",
+      "description": "Quantization variants — each key is a variant name (e.g. default, fp16, q4)",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["file", "dtype", "url"],
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "Relative path to the ONNX file within the model directory"
+          },
+          "dtype": {
+            "type": "string",
+            "description": "Data type / quantization level passed to the backend"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Download URL"
+          },
+          "size": {
+            "type": "number",
+            "description": "Expected file size in bytes"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "voice_url": {
+      "type": "string",
+      "description": "URL template for downloading voices. Use ${voice_id} as placeholder."
+    },
+    "defaults": {
+      "type": "object",
+      "required": ["variant", "voice", "sample_rate", "response_format"],
+      "properties": {
+        "variant": {
+          "type": "string",
+          "description": "Default variant key to use"
+        },
+        "voice": {
+          "type": "string",
+          "description": "Default voice ID, also downloaded on first pull"
+        },
+        "sample_rate": {
+          "type": "number",
+          "description": "Audio sample rate in Hz"
+        },
+        "response_format": {
+          "type": "string",
+          "description": "Default audio output format"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

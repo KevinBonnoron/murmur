@@ -1,0 +1,63 @@
+{
+  "$schema": "./manifest.schema.json",
+  "name": "kokoro",
+  "description": "Kokoro TTS — high quality, fast, multilingual (82M params, ONNX)",
+  "backend": "kokoro",
+  "license": "Apache-2.0",
+  "files": [
+    {
+      "name": "config.json",
+      "url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/config.json",
+      "size": 1200
+    },
+    {
+      "name": "tokenizer.json",
+      "url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/tokenizer.json",
+      "size": 24000
+    },
+    {
+      "name": "tokenizer_config.json",
+      "url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/tokenizer_config.json",
+      "size": 1500
+    }
+  ],
+  "variants": {
+    "default": {
+      "file": "onnx/model_quantized.onnx",
+      "dtype": "q8",
+      "url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/onnx/model_quantized.onnx",
+      "size": 92000000
+    },
+    "fp32": {
+      "file": "onnx/model.onnx",
+      "dtype": "fp32",
+      "url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/onnx/model.onnx",
+      "size": 330000000
+    },
+    "fp16": {
+      "file": "onnx/model_fp16.onnx",
+      "dtype": "fp16",
+      "url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/onnx/model_fp16.onnx",
+      "size": 165000000
+    },
+    "q4": {
+      "file": "onnx/model_q4.onnx",
+      "dtype": "q4",
+      "url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/onnx/model_q4.onnx",
+      "size": 46000000
+    },
+    "q4f16": {
+      "file": "onnx/model_q4f16.onnx",
+      "dtype": "q4f16",
+      "url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/onnx/model_q4f16.onnx",
+      "size": 58000000
+    }
+  },
+  "voice_url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/${voice_id}.bin",
+  "defaults": {
+    "variant": "default",
+    "voice": "af_heart",
+    "sample_rate": 24000,
+    "response_format": "wav"
+  }
+}
