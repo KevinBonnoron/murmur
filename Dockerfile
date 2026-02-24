@@ -7,7 +7,7 @@ RUN bun install --frozen-lockfile --production
 
 FROM base
 
-RUN groupadd --system murmur && useradd --system --gid murmur murmur
+RUN groupadd --system murmur && useradd --system --gid murmur --create-home murmur
 USER murmur
 
 COPY --from=install /app/node_modules ./node_modules
