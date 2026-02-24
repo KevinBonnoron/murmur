@@ -49,6 +49,13 @@ export default defineCommand({
       alias: 'n',
       description: 'Number of flow matching steps (default: 16, higher = better quality but slower)',
     },
+    device: {
+      type: 'enum',
+      alias: 'd',
+      description: 'Device to run inference on (auto, cpu, cuda)',
+      default: 'auto',
+      options: ['auto', 'cpu', 'cuda', 'tensorrt'],
+    },
   },
   async run({ args }) {
     const ref = parseModelRef(args.model);
@@ -74,7 +81,7 @@ Example:
 
     const voice = args.voice ?? manifest.defaults.voice;
     await ensureVoice(manifest, voice);
-    const backend = await getBackend(manifest, ref.variant);
+    const backend = await getBackend(manifest, ref.variant, args.device);
 
     let referenceAudio: Buffer | undefined;
     const refAudioPath = args['reference-audio'];

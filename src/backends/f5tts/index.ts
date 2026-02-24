@@ -18,7 +18,7 @@ export class F5TTSBackend extends BaseTTSBackend {
     return this.session?.isReady === true;
   }
 
-  protected async doLoad(modelPath: string, _manifest: ModelManifest, variant: ManifestVariant): Promise<void> {
+  protected async doLoad(modelPath: string, _manifest: ModelManifest, variant: ManifestVariant, device: string): Promise<void> {
     // Load vocab for tokenizer
     const vocabPath = join(modelPath, 'vocab.txt');
     const vocabFile = Bun.file(vocabPath);
@@ -29,7 +29,7 @@ export class F5TTSBackend extends BaseTTSBackend {
 
     // Load ONNX sessions
     this.session = new F5InferenceSession();
-    await this.session.load(modelPath, variant.file);
+    await this.session.load(modelPath, variant.file, device);
   }
 
   protected async doGenerate({ text, referenceAudio, referenceText, speed = 1.0, nfeSteps = DEFAULT_NFE_STEPS }: GenerateRequest): Promise<AudioResult> {
