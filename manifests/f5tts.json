@@ -1,0 +1,40 @@
+{
+  "$schema": "./manifest.schema.json",
+  "name": "f5tts",
+  "description": "F5-TTS — zero-shot voice cloning via flow matching (300M params, ONNX)",
+  "backend": "f5tts",
+  "license": "CC-BY-NC-4.0",
+  "files": [
+    {
+      "name": "vocab.txt",
+      "url": "https://huggingface.co/nsarang/F5-TTS-ONNX/resolve/main/vocab.txt"
+    },
+    {
+      "name": "onnx/encoder_fp32.onnx",
+      "url": "https://huggingface.co/nsarang/F5-TTS-ONNX/resolve/main/onnx/encoder_fp32.onnx"
+    },
+    {
+      "name": "onnx/decoder_fp32.onnx",
+      "url": "https://huggingface.co/nsarang/F5-TTS-ONNX/resolve/main/onnx/decoder_fp32.onnx"
+    }
+  ],
+  "variants": {
+    "default": {
+      "file": "onnx/transformer_fp32.onnx",
+      "dtype": "fp32",
+      "url": "https://huggingface.co/nsarang/F5-TTS-ONNX/resolve/main/onnx/transformer_fp32.onnx"
+    },
+    "fp16": {
+      "file": "onnx/transformer_fp16.onnx",
+      "dtype": "fp16",
+      "url": "https://huggingface.co/nsarang/F5-TTS-ONNX/resolve/main/onnx/transformer_fp16.onnx"
+    }
+  },
+  "voice_url": "",
+  "defaults": {
+    "variant": "default",
+    "voice": "",
+    "sample_rate": 24000,
+    "response_format": "wav"
+  }
+}

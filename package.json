@@ -1,0 +1,37 @@
+{
+  "name": "murmur",
+  "version": "0.1.0",
+  "description": "An Ollama-like TTS server — pull models, run locally, serve via API",
+  "type": "module",
+  "bin": {
+    "murmur": "./src/main.ts"
+  },
+  "scripts": {
+    "dev": "bun run --hot src/main.ts serve",
+    "start": "bun run src/main.ts serve",
+    "typecheck": "bunx tsc --noEmit",
+    "lint": "bunx biome check ./src",
+    "format": "bunx biome format --write ./src",
+    "check": "bunx biome check --write ./src",
+    "build": "bash scripts/build.sh"
+  },
+  "dependencies": {
+    "citty": "^0.2.1",
+    "consola": "^3.4.0",
+    "espeak-ng": "^1.0.2",
+    "hono": "^4.7.0",
+    "kokoro-js": "^1.2.0",
+    "onnxruntime-node": "^1.22.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.4",
+    "@types/bun": "latest"
+  },
+  "optionalDependencies": {
+    "@img/sharp-darwin-arm64": "^0.34.0",
+    "@img/sharp-linux-x64": "^0.34.0"
+  },
+  "overrides": {
+    "onnxruntime-node": "1.24.2"
+  }
+}
