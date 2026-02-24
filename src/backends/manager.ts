@@ -25,8 +25,8 @@ export function setDefaultDevice(device: string): void {
  * Checks: 1) NVIDIA GPU present (nvidia-smi) 2) CUDA 12 runtime libs available (ldconfig).
  * A CUDA 13 driver can run CUDA 12 code — only the toolkit libs matter.
  */
-const NVIDIA_SMI_PATHS = ['/usr/bin/nvidia-smi', '/usr/local/bin/nvidia-smi', '/opt/cuda/bin/nvidia-smi'];
-const CUBLAS_SEARCH_PATHS = ['/usr/local/cuda-12/lib64', '/usr/local/cuda/lib64', '/usr/lib/x86_64-linux-gnu', '/usr/lib/aarch64-linux-gnu'];
+const NVIDIA_SMI_PATHS = ['/usr/bin/nvidia-smi', '/usr/local/bin/nvidia-smi', '/opt/cuda/bin/nvidia-smi', '/usr/local/nvidia/bin/nvidia-smi'];
+const CUBLAS_SEARCH_PATHS = ['/usr/local/cuda-12/lib64', '/usr/local/cuda/lib64', '/usr/lib/x86_64-linux-gnu', '/usr/lib/aarch64-linux-gnu', '/usr/local/nvidia/lib64', '/usr/local/nvidia/lib'];
 
 function findExecutable(candidates: readonly string[]): string | null {
   for (const p of candidates) {
@@ -41,10 +41,28 @@ function findExecutable(candidates: readonly string[]): string | null {
   return null;
 }
 
+/** Collect extra library directories from LD_LIBRARY_PATH (set by NVIDIA Container Toolkit). */
+function getExtraLibDirs(): string[] {
+  const ldPath = process.env.LD_LIBRARY_PATH;
+  if (!ldPath) {
+    return [];
+  }
+  return ldPath.split(':').filter((d) => {
+    return d.length > 0;
+  });
+}
+
 function detectCuda(): { available: boolean; reason?: string } {
   try {
-    // 1. Check for NVIDIA GPU (use absolute paths — compiled binary may have a minimal PATH)
-    const smiPath = findExecutable(NVIDIA_SMI_PATHS);
+    // 1. Check for NVIDIA GPU (try known absolute paths first, then fall back to PATH lookup)
+    let smiPath = findExecutable(NVIDIA_SMI_PATHS);
+    if (!smiPath) {
+      // Fallback: try PATH-based lookup (covers Docker NVIDIA runtime mounts)
+      const which = Bun.spawnSync(['which', 'nvidia-smi'], { stdout: 'pipe', stderr: 'ignore' });
+      if (which.exitCode === 0) {
+        smiPath = which.stdout.toString().trim();
+      }
+    }
     if (!smiPath) {
       return { available: false, reason: 'no NVIDIA GPU detected (nvidia-smi not found)' };
     }
@@ -66,11 +84,12 @@ function detectCuda(): { available: boolean; reason?: string } {
     }
 
     // 3. Check required CUDA 12 libs (cuBLAS + cuDNN)
+    const libSearchPaths = [...CUBLAS_SEARCH_PATHS, ...getExtraLibDirs()];
     const requiredLibs = ['libcublasLt.so.12', 'libcudnn.so.9'];
     for (const lib of requiredLibs) {
       let found = ldcacheOutput.includes(lib);
       if (!found) {
-        for (const dir of CUBLAS_SEARCH_PATHS) {
+        for (const dir of libSearchPaths) {
           try {
             if (Bun.file(`${dir}/${lib}`).size > 0) {
               found = true;
