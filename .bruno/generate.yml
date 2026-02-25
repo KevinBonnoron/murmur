@@ -1,0 +1,18 @@
+info:
+  name: generate
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/api/generate"
+  body:
+    type: json
+    data: "{}"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
