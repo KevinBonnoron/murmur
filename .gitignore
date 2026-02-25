@@ -3,4 +3,9 @@ dist/
 *.tgz
 .env
 .env.*
+!.env.example
 .claude/settings.local.json
+
+# OS files
+.DS_Store
+Thumbs.db

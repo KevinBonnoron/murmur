@@ -13,7 +13,7 @@ export async function downloadFile(url: string, destPath: string, expectedSize: 
   const existing = Bun.file(destPath);
   if (await existing.exists()) {
     const stat = existing.size;
-    if (expectedSize && stat === expectedSize) {
+    if (expectedSize !== undefined && stat === expectedSize) {
       onProgress?.({ file: label, downloaded: expectedSize, total: expectedSize, done: true });
       return;
     }
@@ -54,6 +54,11 @@ export async function downloadFile(url: string, destPath: string, expectedSize: 
     await writer.end();
     await unlink(tmpPath).catch(() => {});
     throw err;
+  }
+
+  if (total > 0 && downloaded !== total) {
+    await unlink(tmpPath).catch(() => {});
+    throw new Error(`Incomplete download for ${label}: expected ${total} bytes but got ${downloaded}`);
   }
 
   await rename(tmpPath, destPath);

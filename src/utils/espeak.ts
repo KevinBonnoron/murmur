@@ -41,9 +41,13 @@ export async function espeakIPA(text: string, lang: string): Promise<string> {
   });
 
   // eSpeak uses newlines as pause markers — join into a single line
-  return espeak.FS.readFile('output.txt', { encoding: 'utf8' })
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .join(' ');
+  try {
+    return espeak.FS.readFile('output.txt', { encoding: 'utf8' })
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .join(' ');
+  } catch {
+    throw new Error(`espeak-ng produced no output for lang="${lang}": "${text}"`);
+  }
 }
