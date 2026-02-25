@@ -25,7 +25,7 @@ export interface PullOptions {
   voice?: string;
 }
 
-async function downloadFile(url: string, destPath: string, expectedSize: number | undefined, label: string, onProgress?: (progress: PullProgress) => void): Promise<void> {
+export async function downloadFile(url: string, destPath: string, expectedSize: number | undefined, label: string, onProgress?: (progress: PullProgress) => void): Promise<void> {
   const existing = Bun.file(destPath);
   if (await existing.exists()) {
     const stat = existing.size;

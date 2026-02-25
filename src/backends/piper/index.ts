@@ -1,8 +1,8 @@
-import { mkdir } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 import consola from 'consola';
 import type { InferenceSession } from 'onnxruntime-node';
 import type { ManifestVariant, ModelManifest } from '../../models/manifest.ts';
+import { downloadFile } from '../../models/registry.ts';
 import type { AudioResult, GenerateRequest } from '../backend.ts';
 import { BaseTTSBackend } from '../base.ts';
 import { type PiperModelConfig, parsePiperConfig } from './config.ts';
@@ -276,29 +276,15 @@ export class PiperBackend extends BaseTTSBackend {
       return;
     }
 
-    await mkdir(voiceDir, { recursive: true });
-
     try {
       if (!configExists) {
-        consola.start(`Downloading Piper voice config: ${voiceId}.onnx.json`);
         const configUrl = buildVoiceUrl(voiceId, '.onnx.json');
-        const response = await fetch(configUrl, { signal: AbortSignal.timeout(60_000) });
-        if (!response.ok) {
-          throw new Error(`${response.status} ${response.statusText}`);
-        }
-        await Bun.write(configPath, response);
-        consola.success(`Downloaded ${voiceId}.onnx.json`);
+        await downloadFile(configUrl, configPath, undefined, `${voiceId}.onnx.json`);
       }
 
       if (!onnxExists) {
-        consola.start(`Downloading Piper voice model: ${voiceId}.onnx`);
         const onnxUrl = buildVoiceUrl(voiceId, '.onnx');
-        const response = await fetch(onnxUrl, { signal: AbortSignal.timeout(300_000) });
-        if (!response.ok) {
-          throw new Error(`${response.status} ${response.statusText}`);
-        }
-        await Bun.write(onnxPath, response);
-        consola.success(`Downloaded ${voiceId}.onnx`);
+        await downloadFile(onnxUrl, onnxPath, undefined, `${voiceId}.onnx`);
       }
     } catch {
       throw new Error(`Piper voice "${voiceId}" not found locally or on HuggingFace. For custom voices, place your files at:\n  ${onnxPath}\n  ${configPath}`);
