@@ -19,7 +19,7 @@ export interface AudioResult {
 }
 
 export interface TTSBackend {
-  load(modelPath: string, manifest: ModelManifest, variant: ManifestVariant, device?: string): Promise<void>;
+  load(modelPath: string, manifest: ModelManifest, variant: ManifestVariant, device?: string, allowFallback?: boolean): Promise<void>;
   generate(request: GenerateRequest): Promise<AudioResult>;
   unload(): Promise<void>;
   isLoaded(): boolean;

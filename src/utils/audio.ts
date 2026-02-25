@@ -190,6 +190,7 @@ export function normalizeToInt16(samples: Float32Array, quantile = 0.999): Int16
   return output;
 }
 
+/** Encode pre-converted Int16 PCM samples to a WAV buffer. */
 export function encodeWav(samples: Int16Array, sampleRate: number): Buffer {
   const numChannels = 1;
   const bitsPerSample = 16;
@@ -221,6 +222,43 @@ export function encodeWav(samples: Int16Array, sampleRate: number): Buffer {
   for (let i = 0; i < samples.length; i++) {
     // biome-ignore lint/style/noNonNullAssertion: bounded loop
     buffer.writeInt16LE(samples[i]!, headerSize + i * 2);
+  }
+
+  return buffer;
+}
+
+/** Encode Float32 PCM samples to a 16-bit PCM WAV buffer. */
+export function encodeWavFromFloat32(samples: Float32Array, sampleRate: number): Buffer {
+  const numChannels = 1;
+  const bitsPerSample = 16;
+  const bytesPerSample = bitsPerSample / 8;
+  const dataSize = samples.length * bytesPerSample;
+  const headerSize = 44;
+  const buffer = Buffer.alloc(headerSize + dataSize);
+
+  // RIFF header
+  buffer.write('RIFF', 0);
+  buffer.writeUInt32LE(36 + dataSize, 4);
+  buffer.write('WAVE', 8);
+
+  // fmt chunk
+  buffer.write('fmt ', 12);
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(numChannels, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * numChannels * bytesPerSample, 28);
+  buffer.writeUInt16LE(numChannels * bytesPerSample, 32);
+  buffer.writeUInt16LE(bitsPerSample, 34);
+
+  // data chunk
+  buffer.write('data', 36);
+  buffer.writeUInt32LE(dataSize, 40);
+
+  for (let i = 0; i < samples.length; i++) {
+    // biome-ignore lint/style/noNonNullAssertion: bounded loop
+    const val = Math.round(samples[i]! * 32767.0);
+    buffer.writeInt16LE(Math.max(-32768, Math.min(32767, val)), headerSize + i * 2);
   }
 
   return buffer;

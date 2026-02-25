@@ -12,7 +12,7 @@ export abstract class BaseTTSBackend implements TTSBackend {
   protected abstract doGenerate(request: GenerateRequest): Promise<AudioResult>;
   protected abstract doUnload(): Promise<void>;
 
-  public async load(modelPath: string, manifest: ModelManifest, variant: ManifestVariant, device?: string): Promise<void> {
+  public async load(modelPath: string, manifest: ModelManifest, variant: ManifestVariant, device?: string, allowFallback = false): Promise<void> {
     const resolvedDevice = device ?? 'cpu';
     if (this.isLoaded()) {
       if (this.loadedDevice && this.loadedDevice !== resolvedDevice) {
@@ -26,6 +26,13 @@ export abstract class BaseTTSBackend implements TTSBackend {
       await this.doLoad(modelPath, manifest, variant, resolvedDevice);
     } catch (err) {
       if (resolvedDevice !== 'cpu' && err instanceof Error && /ExecutionProvider|providers.*load|shared library/i.test(err.message)) {
+        if (allowFallback) {
+          consola.warn(`${resolvedDevice} unavailable, falling back to cpu: ${err.message}`);
+          await this.doLoad(modelPath, manifest, variant, 'cpu');
+          this.loadedDevice = 'cpu';
+          consola.success(`${this.backendName} model loaded (device: cpu)`);
+          return;
+        }
         throw new Error(`Failed to load ${this.backendName} with device '${resolvedDevice}': ${err.message}\nMake sure the CUDA toolkit is installed and its libraries are in LD_LIBRARY_PATH.\nHint: use --device auto to fall back automatically.`);
       }
       throw err;

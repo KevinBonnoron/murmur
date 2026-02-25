@@ -16,6 +16,7 @@
     "build": "bash scripts/build.sh"
   },
   "dependencies": {
+    "@hono/zod-validator": "^0.7.6",
     "citty": "^0.2.1",
     "consola": "^3.4.0",
     "espeak-ng": "^1.0.2",
@@ -26,10 +27,6 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.4",
     "@types/bun": "latest"
-  },
-  "optionalDependencies": {
-    "@img/sharp-darwin-arm64": "^0.34.0",
-    "@img/sharp-linux-x64": "^0.34.0"
   },
   "overrides": {
     "onnxruntime-node": "1.24.2"

@@ -1,39 +1,26 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
 import { getBackend } from '../../backends/manager.ts';
-import { ensureVoice, findModel } from '../../models/registry.ts';
+import { ensureModel, ensureVoice } from '../../models/registry.ts';
+import { zValidator } from '../validation.ts';
 
-export const generateRoutes = new Hono().post('/', async (c) => {
-  let body: Record<string, unknown>;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: 'Invalid JSON body' }, 400);
-  }
+const generateSchema = z.object({
+  model: z.string(),
+  input: z.string(),
+  voice: z.string().optional(),
+  speed: z.number().optional(),
+  variant: z.string().optional(),
+  reference_audio: z.string().optional(),
+  reference_text: z.string().optional(),
+  nfe_steps: z.number().optional(),
+  device: z.enum(['auto', 'cpu', 'cuda', 'tensorrt']).optional(),
+});
 
-  const { model, input, voice, speed, variant, reference_audio, reference_text, nfe_steps, device } = body as {
-    model?: string;
-    input?: string;
-    voice?: string;
-    speed?: number;
-    variant?: string;
-    reference_audio?: string;
-    reference_text?: string;
-    nfe_steps?: number;
-    device?: string;
-  };
-
-  if (!model) {
-    return c.json({ error: 'Missing required field: model' }, 400);
-  }
-  if (!input) {
-    return c.json({ error: 'Missing required field: input' }, 400);
-  }
-  if (device && !['auto', 'cpu', 'cuda', 'tensorrt'].includes(device)) {
-    return c.json({ error: `Invalid device: ${device}` }, 400);
-  }
+export const generateRoutes = new Hono().post('/', zValidator('json', generateSchema), async (c) => {
+  const { model, input, voice, speed, variant, reference_audio, reference_text, nfe_steps, device } = c.req.valid('json');
 
   try {
-    const manifest = await findModel(model);
+    const manifest = await ensureModel(model);
     const resolvedVoice = voice ?? manifest.defaults.voice;
     await ensureVoice(manifest, resolvedVoice);
     const backend = await getBackend(manifest, variant, device);

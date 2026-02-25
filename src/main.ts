@@ -60,6 +60,7 @@ const main = defineCommand({
     list: () => import('./cli/list.ts').then((m) => m.default),
     remove: () => import('./cli/remove.ts').then((m) => m.default),
     run: () => import('./cli/run.ts').then((m) => m.default),
+    setup: () => import('./cli/setup.ts').then((m) => m.default),
   },
 });
 

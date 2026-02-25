@@ -1,0 +1,7 @@
+info:
+  name: models
+  type: folder
+  seq: 4
+
+request:
+  auth: inherit

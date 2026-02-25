@@ -15,28 +15,16 @@ rm -rf "$DIST"
 mkdir -p "$DIST/bin" "$DIST/lib"
 
 echo "Compiling binary..."
-bun build --compile "$ROOT/src/main.ts" --outfile "$DIST/bin/murmur-bin"
+bun build --compile --minify --external onnxruntime-web "$ROOT/src/main.ts" --outfile "$DIST/bin/murmur-bin"
 
 echo "Copying native libraries..."
 ONNX_DIR="$ROOT/node_modules/onnxruntime-node/bin/napi-v6/$OS/$ARCH"
 cp "$ONNX_DIR"/libonnxruntime.* "$DIST/lib/"
 
-# Copy CUDA/TensorRT provider libraries if available (downloaded by onnxruntime postinstall)
-for f in "$ONNX_DIR"/libonnxruntime_providers_*.so; do
-  [ -f "$f" ] && cp "$f" "$DIST/lib/" && echo "  Bundled $(basename "$f")"
-done
-
-SHARP_LIBVIPS_DIR="$ROOT/node_modules/@img/sharp-libvips-$OS-$ARCH/lib"
-cp "$SHARP_LIBVIPS_DIR"/libvips-cpp.* "$DIST/lib/"
+# Always bundle the shared provider (15KB) — needed for provider detection even on CPU
+[ -f "$ONNX_DIR/libonnxruntime_providers_shared.so" ] && cp "$ONNX_DIR/libonnxruntime_providers_shared.so" "$DIST/lib/"
 
 cp "$ROOT/node_modules/espeak-ng/dist/espeak-ng.wasm" "$DIST/lib/"
-
-# Sharp uses a dynamic require(`@img/sharp-${platform}/sharp.node`) that bun
-# cannot resolve at compile time. Ship the package so it can be found at runtime.
-SHARP_PKG="@img/sharp-$OS-$ARCH"
-mkdir -p "$DIST/node_modules/$SHARP_PKG/lib"
-cp "$ROOT/node_modules/$SHARP_PKG/package.json" "$DIST/node_modules/$SHARP_PKG/"
-cp "$ROOT/node_modules/$SHARP_PKG/lib/"*.node "$DIST/node_modules/$SHARP_PKG/lib/"
 
 echo "Creating wrapper..."
 if [ "$OS" = "linux" ]; then

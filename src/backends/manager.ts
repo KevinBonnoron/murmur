@@ -105,6 +105,18 @@ function detectCuda(): { available: boolean; reason?: string } {
       }
     }
 
+    // 4. Check that ONNX Runtime CUDA provider is installed (bundled or via `murmur setup gpu`)
+    const libDir = process.env.MURMUR_LIB_DIR;
+    if (libDir) {
+      try {
+        if (Bun.file(`${libDir}/libonnxruntime_providers_cuda.so`).size === 0) {
+          return { available: false, reason: 'ONNX Runtime CUDA provider not installed — run `murmur setup gpu`' };
+        }
+      } catch {
+        return { available: false, reason: 'ONNX Runtime CUDA provider not installed — run `murmur setup gpu`' };
+      }
+    }
+
     return { available: true };
   } catch {
     return { available: false, reason: 'no NVIDIA GPU detected' };
@@ -172,7 +184,8 @@ export async function getBackend(manifest: ModelManifest, variantKey?: string, d
           }
         }
 
-        await backend.load(modelDir, manifest, variant, resolvedDevice);
+        const allowFallback = (device ?? defaultDevice) === 'auto';
+        await backend.load(modelDir, manifest, variant, resolvedDevice, allowFallback);
       })();
       inFlightLoads.set(key, loadPromise);
     }

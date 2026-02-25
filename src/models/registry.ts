@@ -1,9 +1,11 @@
-import { mkdir, rename, unlink } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { mkdir } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import consola from 'consola';
 import f5ttsManifest from '../../manifests/f5tts.json';
 import kokoroManifest from '../../manifests/kokoro.json';
 import piperManifest from '../../manifests/piper.json';
+import type { DownloadProgress } from '../utils/download.ts';
+import { downloadFile } from '../utils/download.ts';
 import { getVariant, type ModelManifest, parseManifest, parseModelRef, resolveVoiceUrl } from './manifest.ts';
 import { getModelDir, getVoicePath, isModelInstalled, isVoiceInstalled, listInstalledModels, loadManifest, saveManifest } from './storage.ts';
 
@@ -13,68 +15,11 @@ const BUILTIN_MODELS: Record<string, object> = {
   piper: piperManifest,
 };
 
-export interface PullProgress {
-  file: string;
-  downloaded: number;
-  total: number;
-  done: boolean;
-}
+export type PullProgress = DownloadProgress;
 
 export interface PullOptions {
   variant?: string;
   voice?: string;
-}
-
-async function downloadFile(url: string, destPath: string, expectedSize: number | undefined, label: string, onProgress?: (progress: PullProgress) => void): Promise<void> {
-  const existing = Bun.file(destPath);
-  if (await existing.exists()) {
-    const stat = existing.size;
-    if (expectedSize && stat === expectedSize) {
-      onProgress?.({ file: label, downloaded: expectedSize, total: expectedSize, done: true });
-      return;
-    }
-  }
-
-  const fileDir = dirname(destPath);
-  await mkdir(fileDir, { recursive: true });
-
-  consola.start(`Downloading ${label}...`);
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to download ${url}: ${response.status} ${response.statusText}`);
-  }
-
-  const total = expectedSize ?? Number(response.headers.get('content-length') ?? 0);
-  let downloaded = 0;
-
-  if (!response.body) {
-    throw new Error(`No response body for ${url}`);
-  }
-
-  const tmpPath = `${destPath}.tmp`;
-  const writer = Bun.file(tmpPath).writer();
-  const reader = response.body.getReader();
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-      writer.write(value);
-      downloaded += value.byteLength;
-      onProgress?.({ file: label, downloaded, total, done: false });
-    }
-    await writer.end();
-  } catch (err) {
-    await writer.end();
-    await unlink(tmpPath).catch(() => {});
-    throw err;
-  }
-
-  await rename(tmpPath, destPath);
-  onProgress?.({ file: label, downloaded, total, done: true });
-  consola.success(`Downloaded ${label}`);
 }
 
 export async function resolveManifest(nameOrPath: string): Promise<ModelManifest> {
@@ -174,6 +119,28 @@ export async function pullModel(nameOrPath: string, options?: PullOptions, onPro
   return manifest;
 }
 
+export async function findInstalledModel(nameOrRef: string): Promise<ModelManifest | undefined> {
+  const ref = parseModelRef(nameOrRef);
+  const models = await listInstalledModels();
+  return models.find((m) => m.name === ref.name);
+}
+
+export async function ensureModel(nameOrPath: string): Promise<ModelManifest> {
+  const ref = parseModelRef(nameOrPath);
+  const match = await findInstalledModel(nameOrPath);
+
+  if (!match) {
+    // Auto-pull if this is a known built-in model
+    if (BUILTIN_MODELS[ref.name]) {
+      consola.info(`Model ${ref.name} not installed, pulling automatically...`);
+      return pullModel(ref.name, { variant: ref.variant });
+    }
+    throw new Error(`Model ${ref.name} is not installed. Run: murmur pull ${ref.name}`);
+  }
+
+  return match;
+}
+
 export async function ensureVoice(manifest: ModelManifest, voiceId: string): Promise<void> {
   if (!manifest.voice_url || (await isVoiceInstalled(manifest.name, voiceId))) {
     return;
@@ -187,22 +154,4 @@ export async function ensureVoice(manifest: ModelManifest, voiceId: string): Pro
   const existing = manifest.installed_voices ?? [];
   const updated = { ...manifest, installed_voices: [...existing, voiceId] };
   await saveManifest(updated);
-}
-
-export async function findModel(nameOrPath: string): Promise<ModelManifest> {
-  const ref = parseModelRef(nameOrPath);
-  const models = await listInstalledModels();
-
-  const match = models.find((m) => m.name === ref.name);
-
-  if (!match) {
-    // Auto-pull if this is a known built-in model
-    if (BUILTIN_MODELS[ref.name]) {
-      consola.info(`Model ${ref.name} not installed, pulling automatically...`);
-      return pullModel(ref.name, { variant: ref.variant });
-    }
-    throw new Error(`Model ${ref.name} is not installed. Run: murmur pull ${ref.name}`);
-  }
-
-  return match;
 }

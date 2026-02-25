@@ -8,17 +8,17 @@
     {
       "name": "config.json",
       "url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/config.json",
-      "size": 1200
+      "size": 44
     },
     {
       "name": "tokenizer.json",
       "url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/tokenizer.json",
-      "size": 24000
+      "size": 3497
     },
     {
       "name": "tokenizer_config.json",
       "url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/tokenizer_config.json",
-      "size": 1500
+      "size": 113
     }
   ],
   "variants": {

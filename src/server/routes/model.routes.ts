@@ -1,14 +1,16 @@
 import { Hono } from 'hono';
 import { stream as honoStream } from 'hono/streaming';
-import { getFullName, parseModelRef } from '../../models/manifest.ts';
-import { pullModel } from '../../models/registry.ts';
+import { z } from 'zod';
+import { getFullName } from '../../models/manifest.ts';
+import { findInstalledModel, pullModel } from '../../models/registry.ts';
 import { listInstalledModels, removeModel } from '../../models/storage.ts';
+import { zValidator } from '../validation.ts';
 
-async function findInstalledModel(nameOrRef: string): Promise<import('../../models/manifest.ts').ModelManifest | undefined> {
-  const ref = parseModelRef(nameOrRef);
-  const models = await listInstalledModels();
-  return models.find((m) => m.name === ref.name);
-}
+const pullSchema = z.object({
+  name: z.string(),
+  variant: z.string().optional(),
+  voice: z.string().optional(),
+});
 
 export const modelRoutes = new Hono()
   // GET /api/models — list installed models
@@ -26,21 +28,9 @@ export const modelRoutes = new Hono()
   })
 
   // POST /api/models/pull — pull a model (streaming progress)
-  .post('/pull', (c) => {
+  .post('/pull', zValidator('json', pullSchema), (c) => {
     return honoStream(c, async (stream) => {
-      let body: unknown;
-      try {
-        body = await c.req.json();
-      } catch {
-        stream.write(`${JSON.stringify({ error: 'Invalid JSON body' })}\n`);
-        return;
-      }
-      const { name, variant, voice } = body as { name?: string; variant?: string; voice?: string };
-
-      if (!name) {
-        stream.write(`${JSON.stringify({ error: 'Missing required field: name' })}\n`);
-        return;
-      }
+      const { name, variant, voice } = c.req.valid('json');
 
       try {
         const manifest = await pullModel(name, { variant, voice }, (progress) => {

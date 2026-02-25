@@ -16,7 +16,10 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "types": ["bun-types"],
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "paths": {
+      "sharp": ["./src/stubs/sharp.ts"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
