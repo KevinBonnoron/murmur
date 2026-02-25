@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import type { InferenceSession, Tensor } from 'onnxruntime-node';
-import { TARGET_RMS, TARGET_SAMPLE_RATE } from './audio.ts';
+import { TARGET_RMS, TARGET_SAMPLE_RATE } from '../../utils/audio.ts';
 
 const HOP_LENGTH = 256;
 

@@ -1,8 +1,8 @@
 import { join } from 'node:path';
 import type { ManifestVariant, ModelManifest } from '../../models/manifest.ts';
+import { encodeWav, prepareReferenceAudio } from '../../utils/audio.ts';
 import type { AudioResult, GenerateRequest } from '../backend.ts';
 import { BaseTTSBackend } from '../base.ts';
-import { encodeWav, prepareReferenceAudio } from './audio.ts';
 import { F5InferenceSession } from './inference.ts';
 import { F5Tokenizer } from './tokenizer.ts';
 

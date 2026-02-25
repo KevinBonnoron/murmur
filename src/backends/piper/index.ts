@@ -2,7 +2,8 @@ import { join, resolve, sep } from 'node:path';
 import consola from 'consola';
 import type { InferenceSession } from 'onnxruntime-node';
 import type { ManifestVariant, ModelManifest } from '../../models/manifest.ts';
-import { downloadFile } from '../../models/registry.ts';
+import { encodeWavFromFloat32 } from '../../utils/audio.ts';
+import { downloadFile } from '../../utils/download.ts';
 import type { AudioResult, GenerateRequest } from '../backend.ts';
 import { BaseTTSBackend } from '../base.ts';
 import { type PiperModelConfig, parsePiperConfig } from './config.ts';
@@ -44,43 +45,6 @@ function parseVoiceId(voiceId: string): { lang: string; locale: string; name: st
 function buildVoiceUrl(voiceId: string, extension: string): string {
   const { lang, locale, name, quality } = parseVoiceId(voiceId);
   return `${PIPER_VOICE_BASE_URL}/${lang}/${locale}/${name}/${quality}/${voiceId}${extension}`;
-}
-
-/** Encode Float32 PCM samples to a 16-bit PCM WAV buffer. */
-function encodeWavFromFloat32(samples: Float32Array, sampleRate: number): Buffer {
-  const numChannels = 1;
-  const bitsPerSample = 16;
-  const bytesPerSample = bitsPerSample / 8;
-  const dataSize = samples.length * bytesPerSample;
-  const headerSize = 44;
-  const buffer = Buffer.alloc(headerSize + dataSize);
-
-  // RIFF header
-  buffer.write('RIFF', 0);
-  buffer.writeUInt32LE(36 + dataSize, 4);
-  buffer.write('WAVE', 8);
-
-  // fmt chunk
-  buffer.write('fmt ', 12);
-  buffer.writeUInt32LE(16, 16);
-  buffer.writeUInt16LE(1, 20);
-  buffer.writeUInt16LE(numChannels, 22);
-  buffer.writeUInt32LE(sampleRate, 24);
-  buffer.writeUInt32LE(sampleRate * numChannels * bytesPerSample, 28);
-  buffer.writeUInt16LE(numChannels * bytesPerSample, 32);
-  buffer.writeUInt16LE(bitsPerSample, 34);
-
-  // data chunk
-  buffer.write('data', 36);
-  buffer.writeUInt32LE(dataSize, 40);
-
-  for (let i = 0; i < samples.length; i++) {
-    // biome-ignore lint/style/noNonNullAssertion: bounded loop
-    const val = Math.round(samples[i]! * 32767.0);
-    buffer.writeInt16LE(Math.max(-32768, Math.min(32767, val)), headerSize + i * 2);
-  }
-
-  return buffer;
 }
 
 export class PiperBackend extends BaseTTSBackend {

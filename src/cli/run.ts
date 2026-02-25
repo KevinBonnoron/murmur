@@ -2,7 +2,7 @@ import { defineCommand } from 'citty';
 import consola from 'consola';
 import { getBackend } from '../backends/manager.ts';
 import { parseModelRef } from '../models/manifest.ts';
-import { ensureVoice, findModel } from '../models/registry.ts';
+import { ensureModel, ensureVoice } from '../models/registry.ts';
 
 export default defineCommand({
   meta: { name: 'run', description: 'Generate speech from text (one-shot, no server needed)' },
@@ -59,7 +59,7 @@ export default defineCommand({
   },
   async run({ args }) {
     const ref = parseModelRef(args.model);
-    const manifest = await findModel(args.model);
+    const manifest = await ensureModel(args.model);
 
     // Backend-specific argument validation
     if (manifest.backend === 'f5tts' && (!args['reference-audio'] || !args['reference-text'])) {

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { getBackend } from '../../backends/manager.ts';
-import { ensureVoice, findModel } from '../../models/registry.ts';
+import { ensureModel, ensureVoice } from '../../models/registry.ts';
 import { zValidator } from '../validation.ts';
 
 const generateSchema = z.object({
@@ -20,7 +20,7 @@ export const generateRoutes = new Hono().post('/', zValidator('json', generateSc
   const { model, input, voice, speed, variant, reference_audio, reference_text, nfe_steps, device } = c.req.valid('json');
 
   try {
-    const manifest = await findModel(model);
+    const manifest = await ensureModel(model);
     const resolvedVoice = voice ?? manifest.defaults.voice;
     await ensureVoice(manifest, resolvedVoice);
     const backend = await getBackend(manifest, variant, device);

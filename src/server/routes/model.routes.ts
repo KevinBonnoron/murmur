@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { stream as honoStream } from 'hono/streaming';
 import { z } from 'zod';
-import { getFullName, parseModelRef } from '../../models/manifest.ts';
-import { pullModel } from '../../models/registry.ts';
+import { getFullName } from '../../models/manifest.ts';
+import { findInstalledModel, pullModel } from '../../models/registry.ts';
 import { listInstalledModels, removeModel } from '../../models/storage.ts';
 import { zValidator } from '../validation.ts';
 
@@ -11,12 +11,6 @@ const pullSchema = z.object({
   variant: z.string().optional(),
   voice: z.string().optional(),
 });
-
-async function findInstalledModel(nameOrRef: string): Promise<import('../../models/manifest.ts').ModelManifest | undefined> {
-  const ref = parseModelRef(nameOrRef);
-  const models = await listInstalledModels();
-  return models.find((m) => m.name === ref.name);
-}
 
 export const modelRoutes = new Hono()
   // GET /api/models — list installed models
