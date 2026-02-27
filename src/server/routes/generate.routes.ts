@@ -32,7 +32,8 @@ export const generateRoutes = new Hono().post('/', zValidator('json', generateSc
     const referenceAudio = reference_audio ? Buffer.from(reference_audio, 'base64') : undefined;
 
     const authHeader = c.req.header('Authorization');
-    const apiKey = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+    const bearerMatch = authHeader?.match(/^Bearer\s+(.+)$/i);
+    const apiKey = bearerMatch?.[1]?.trim() || undefined;
 
     const request = {
       text: input,

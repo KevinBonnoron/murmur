@@ -1,21 +1,31 @@
+import { readdirSync, readFileSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import consola from 'consola';
-import elevenlabsManifest from '../../manifests/elevenlabs.json';
-import f5ttsManifest from '../../manifests/f5tts.json';
-import kokoroManifest from '../../manifests/kokoro.json';
-import piperManifest from '../../manifests/piper.json';
 import type { DownloadProgress } from '../utils/download.ts';
 import { downloadFile } from '../utils/download.ts';
 import { getVariant, type ModelManifest, parseManifest, parseModelRef, resolveVoiceUrl } from './manifest.ts';
 import { getModelDir, getVoicePath, isModelInstalled, isVoiceInstalled, listInstalledModels, loadManifest, saveManifest } from './storage.ts';
 
-const BUILTIN_MODELS: Record<string, object> = {
-  kokoro: kokoroManifest,
-  f5tts: f5ttsManifest,
-  piper: piperManifest,
-  elevenlabs: elevenlabsManifest,
-};
+function discoverBuiltinModels(): Record<string, object> {
+  const manifestsDir = join(import.meta.dir, '..', '..', 'manifests');
+  const models: Record<string, object> = {};
+
+  for (const file of readdirSync(manifestsDir)) {
+    if (!file.endsWith('.json') || file.endsWith('.schema.json')) {
+      continue;
+    }
+
+    const content = JSON.parse(readFileSync(join(manifestsDir, file), 'utf-8'));
+    if (content.name) {
+      models[content.name] = content;
+    }
+  }
+
+  return models;
+}
+
+const BUILTIN_MODELS = discoverBuiltinModels();
 
 export type PullProgress = DownloadProgress;
 

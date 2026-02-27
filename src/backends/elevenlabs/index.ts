@@ -70,23 +70,37 @@ export class ElevenLabsBackend implements TTSBackend {
 
     consola.start(`Generating speech with ElevenLabs (${this.modelId}): ${request.text.length} chars`);
 
-    const response = await fetch(`${ELEVENLABS_API_URL}/${voiceId}?output_format=${outputFormat}`, {
-      method: 'POST',
-      headers: {
-        'xi-api-key': apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        text: request.text,
-        model_id: this.modelId,
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-          style: 0.0,
-          use_speaker_boost: true,
+    const encodedVoiceId = encodeURIComponent(voiceId);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+    let response: Response;
+    try {
+      response = await fetch(`${ELEVENLABS_API_URL}/${encodedVoiceId}?output_format=${outputFormat}`, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'xi-api-key': apiKey,
+          'Content-Type': 'application/json',
         },
-      }),
-    });
+        body: JSON.stringify({
+          text: request.text,
+          model_id: this.modelId,
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+            style: 0.0,
+            use_speaker_boost: true,
+          },
+        }),
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new BackendError('ElevenLabs request timed out', 504);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => '');
