@@ -29,6 +29,7 @@ export class BackendError extends Error {
 
   public constructor(message: string, statusCode: number) {
     super(message);
+    this.name = 'BackendError';
     this.statusCode = statusCode;
   }
 }

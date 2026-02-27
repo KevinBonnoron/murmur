@@ -1,6 +1,6 @@
 import consola from 'consola';
 import type { ManifestVariant, ModelManifest } from '../../models/manifest.ts';
-import { decodeWav, encodePcmFromFloat32, encodeWav, toMono } from '../../utils/audio.ts';
+import { encodeWav } from '../../utils/audio.ts';
 import type { AudioChunk, AudioResult, GenerateRequest, TTSBackend } from '../backend.ts';
 import { BackendError } from '../backend.ts';
 
@@ -31,6 +31,14 @@ function resolveActualSampleRate(sampleRate: number): number {
   }
 }
 
+interface ResolvedRequest {
+  apiKey: string;
+  voiceId: string;
+  sampleRate: number;
+  outputFormat: string;
+  body: string;
+}
+
 export class ElevenLabsBackend implements TTSBackend {
   private envApiKey: string | null = null;
   private modelId: string | null = null;
@@ -54,9 +62,9 @@ export class ElevenLabsBackend implements TTSBackend {
     consola.success(`ElevenLabs backend ready (model: ${this.modelId})`);
   }
 
-  public async generate(request: GenerateRequest): Promise<AudioResult> {
+  private resolveRequest(request: GenerateRequest): ResolvedRequest {
     if (!this.loaded || !this.modelId || !this.manifest) {
-      throw new Error('ElevenLabs backend not loaded. Call load() first.');
+      throw new BackendError('ElevenLabs backend not loaded. Call load() first.', 503);
     }
 
     const apiKey = request.apiKey ?? this.envApiKey;
@@ -68,39 +76,30 @@ export class ElevenLabsBackend implements TTSBackend {
     const sampleRate = resolveActualSampleRate(request.sampleRate ?? this.manifest.defaults.sample_rate);
     const outputFormat = resolveOutputFormat(sampleRate);
 
-    consola.start(`Generating speech with ElevenLabs (${this.modelId}): ${request.text.length} chars`);
+    const body = JSON.stringify({
+      text: request.text,
+      model_id: this.modelId,
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.75,
+        style: 0.0,
+        use_speaker_boost: true,
+      },
+    });
 
-    const encodedVoiceId = encodeURIComponent(voiceId);
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30_000);
-    let response: Response;
-    try {
-      response = await fetch(`${ELEVENLABS_API_URL}/${encodedVoiceId}?output_format=${outputFormat}`, {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          'xi-api-key': apiKey,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: request.text,
-          model_id: this.modelId,
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-            style: 0.0,
-            use_speaker_boost: true,
-          },
-        }),
-      });
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        throw new BackendError('ElevenLabs request timed out', 504);
-      }
-      throw error;
-    } finally {
-      clearTimeout(timeout);
-    }
+    return { apiKey, voiceId, sampleRate, outputFormat, body };
+  }
+
+  private async fetchElevenLabs(url: string, apiKey: string, body: string, signal: AbortSignal): Promise<Response> {
+    const response = await fetch(url, {
+      method: 'POST',
+      signal,
+      headers: {
+        'xi-api-key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body,
+    });
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => '');
@@ -116,32 +115,78 @@ export class ElevenLabsBackend implements TTSBackend {
       throw new BackendError(`ElevenLabs API error (${response.status}): ${message}`, response.status);
     }
 
-    const pcmBuffer = Buffer.from(await response.arrayBuffer());
-    const int16Samples = new Int16Array(pcmBuffer.buffer, pcmBuffer.byteOffset, pcmBuffer.byteLength / 2);
-    const wavBuffer = encodeWav(int16Samples, sampleRate);
-    const duration = int16Samples.length / sampleRate;
+    return response;
+  }
 
-    consola.success(`Generated ${duration.toFixed(2)}s of audio`);
+  public async generate(request: GenerateRequest): Promise<AudioResult> {
+    const { apiKey, voiceId, sampleRate, outputFormat, body } = this.resolveRequest(request);
 
-    return {
-      audio: wavBuffer,
-      format: 'wav',
-      sampleRate,
-      duration,
-    };
+    consola.start(`Generating speech with ElevenLabs (${this.modelId}): ${request.text.length} chars`);
+
+    const encodedVoiceId = encodeURIComponent(voiceId);
+    const url = `${ELEVENLABS_API_URL}/${encodedVoiceId}?output_format=${outputFormat}`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+
+    try {
+      const response = await this.fetchElevenLabs(url, apiKey, body, controller.signal);
+
+      const pcmBuffer = Buffer.from(await response.arrayBuffer());
+      const alignedBuffer = pcmBuffer.buffer.slice(pcmBuffer.byteOffset, pcmBuffer.byteOffset + pcmBuffer.byteLength);
+      const int16Samples = new Int16Array(alignedBuffer);
+      const wavBuffer = encodeWav(int16Samples, sampleRate);
+      const duration = int16Samples.length / sampleRate;
+
+      consola.success(`Generated ${duration.toFixed(2)}s of audio`);
+
+      return {
+        audio: wavBuffer,
+        format: 'wav',
+        sampleRate,
+        duration,
+      };
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new BackendError('ElevenLabs request timed out', 504);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   public async *generateStream(request: GenerateRequest): AsyncGenerator<AudioChunk, void, void> {
-    if (!this.loaded) {
-      throw new Error('ElevenLabs backend not loaded. Call load() first.');
-    }
+    const { apiKey, voiceId, sampleRate, outputFormat, body } = this.resolveRequest(request);
 
-    consola.start(`Streaming speech with ElevenLabs: ${request.text.length} chars`);
-    const result = await this.generate(request);
-    const { samples, sampleRate, channels } = decodeWav(result.audio);
-    const monoSamples = channels > 1 ? toMono(samples, channels) : samples;
-    yield { audio: encodePcmFromFloat32(monoSamples), sampleRate };
-    consola.success(`Streamed ${result.duration.toFixed(2)}s of audio`);
+    consola.start(`Streaming speech with ElevenLabs (${this.modelId}): ${request.text.length} chars`);
+
+    const encodedVoiceId = encodeURIComponent(voiceId);
+    const url = `${ELEVENLABS_API_URL}/${encodedVoiceId}/stream?output_format=${outputFormat}`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60_000);
+
+    try {
+      const response = await this.fetchElevenLabs(url, apiKey, body, controller.signal);
+
+      if (!response.body) {
+        throw new BackendError('ElevenLabs streaming response has no body', 502);
+      }
+
+      for await (const chunk of response.body) {
+        yield { audio: Buffer.from(chunk), sampleRate };
+      }
+
+      consola.success('Streaming complete');
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new BackendError('ElevenLabs request timed out', 504);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   public async unload(): Promise<void> {
