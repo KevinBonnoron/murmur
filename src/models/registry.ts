@@ -1,6 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import consola from 'consola';
+import elevenlabsManifest from '../../manifests/elevenlabs.json';
 import f5ttsManifest from '../../manifests/f5tts.json';
 import kokoroManifest from '../../manifests/kokoro.json';
 import piperManifest from '../../manifests/piper.json';
@@ -13,6 +14,7 @@ const BUILTIN_MODELS: Record<string, object> = {
   kokoro: kokoroManifest,
   f5tts: f5ttsManifest,
   piper: piperManifest,
+  elevenlabs: elevenlabsManifest,
 };
 
 export type PullProgress = DownloadProgress;

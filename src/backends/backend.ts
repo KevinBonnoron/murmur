@@ -9,6 +9,7 @@ export interface GenerateRequest {
   referenceAudio?: Buffer;
   referenceText?: string;
   nfeSteps?: number;
+  apiKey?: string;
 }
 
 export interface AudioResult {
@@ -21,6 +22,15 @@ export interface AudioResult {
 export interface AudioChunk {
   audio: Buffer;
   sampleRate: number;
+}
+
+export class BackendError extends Error {
+  public readonly statusCode: number;
+
+  public constructor(message: string, statusCode: number) {
+    super(message);
+    this.statusCode = statusCode;
+  }
 }
 
 export interface TTSBackend {
