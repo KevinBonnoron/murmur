@@ -1,4 +1,3 @@
-import { readdirSync, readFileSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import consola from 'consola';
@@ -7,25 +6,30 @@ import { downloadFile } from '../utils/download.ts';
 import { getVariant, type ModelManifest, parseManifest, parseModelRef, resolveVoiceUrl } from './manifest.ts';
 import { getModelDir, getVoicePath, isModelInstalled, isVoiceInstalled, listInstalledModels, loadManifest, saveManifest } from './storage.ts';
 
-function discoverBuiltinModels(): Record<string, object> {
+async function discoverBuiltinModels(): Promise<Record<string, object>> {
   const manifestsDir = join(import.meta.dir, '..', '..', 'manifests');
   const models: Record<string, object> = {};
+  const glob = new Bun.Glob('*.json');
 
-  for (const file of readdirSync(manifestsDir)) {
-    if (!file.endsWith('.json') || file.endsWith('.schema.json')) {
+  for (const file of glob.scanSync(manifestsDir)) {
+    if (file.endsWith('.schema.json')) {
       continue;
     }
 
-    const content = JSON.parse(readFileSync(join(manifestsDir, file), 'utf-8'));
-    if (content.name) {
-      models[content.name] = content;
+    try {
+      const content = await Bun.file(join(manifestsDir, file)).json();
+      if (content.name) {
+        models[content.name] = content;
+      }
+    } catch (err) {
+      consola.warn(`Failed to load manifest ${file}:`, err);
     }
   }
 
   return models;
 }
 
-const BUILTIN_MODELS = discoverBuiltinModels();
+const BUILTIN_MODELS = await discoverBuiltinModels();
 
 export type PullProgress = DownloadProgress;
 

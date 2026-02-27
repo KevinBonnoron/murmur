@@ -46,7 +46,7 @@ export class ElevenLabsBackend implements TTSBackend {
       return;
     }
 
-    this.envApiKey = process.env.ELEVENLABS_API_KEY ?? null;
+    this.envApiKey = Bun.env.ELEVENLABS_API_KEY ?? null;
     this.modelId = variant.dtype;
     this.manifest = manifest;
     this.loaded = true;
