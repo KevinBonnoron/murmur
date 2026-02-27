@@ -1,6 +1,6 @@
 import consola from 'consola';
 import type { ManifestVariant, ModelManifest } from '../models/manifest.ts';
-import { decodeWav, encodePcmFromFloat32 } from '../utils/audio.ts';
+import { decodeWav, encodePcmFromFloat32, toMono } from '../utils/audio.ts';
 import type { AudioChunk, AudioResult, GenerateRequest, TTSBackend } from './backend.ts';
 
 export abstract class BaseTTSBackend implements TTSBackend {
@@ -61,8 +61,9 @@ export abstract class BaseTTSBackend implements TTSBackend {
 
     consola.start(`Streaming speech with ${this.backendName}: ${request.text.length} chars`);
     const result = await this.doGenerate(request);
-    const { samples, sampleRate } = decodeWav(result.audio);
-    yield { audio: encodePcmFromFloat32(samples), sampleRate };
+    const { samples, sampleRate, channels } = decodeWav(result.audio);
+    const monoSamples = channels > 1 ? toMono(samples, channels) : samples;
+    yield { audio: encodePcmFromFloat32(monoSamples), sampleRate };
     consola.success(`Streamed ${result.duration.toFixed(2)}s of audio`);
   }
 

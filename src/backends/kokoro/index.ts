@@ -149,6 +149,11 @@ export class KokoroBackend extends BaseTTSBackend {
     const voice = request.voice ?? manifest.defaults.voice;
     const speed = request.speed ?? 1.0;
 
+    if (!isEnglishVoice(voice)) {
+      yield* super.generateStream(request);
+      return;
+    }
+
     consola.start(`Streaming speech with Kokoro: ${request.text.length} chars`);
 
     for await (const chunk of tts.stream(request.text, { voice, speed })) {
