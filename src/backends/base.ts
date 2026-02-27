@@ -1,6 +1,7 @@
 import consola from 'consola';
 import type { ManifestVariant, ModelManifest } from '../models/manifest.ts';
-import type { AudioResult, GenerateRequest, TTSBackend } from './backend.ts';
+import { decodeWav, encodePcmFromFloat32 } from '../utils/audio.ts';
+import type { AudioChunk, AudioResult, GenerateRequest, TTSBackend } from './backend.ts';
 
 export abstract class BaseTTSBackend implements TTSBackend {
   protected abstract readonly backendName: string;
@@ -51,6 +52,18 @@ export abstract class BaseTTSBackend implements TTSBackend {
     consola.success(`Generated ${result.duration.toFixed(2)}s of audio`);
 
     return result;
+  }
+
+  public async *generateStream(request: GenerateRequest): AsyncGenerator<AudioChunk, void, void> {
+    if (!this.isLoaded()) {
+      throw new Error(`${this.backendName} model not loaded. Call load() first.`);
+    }
+
+    consola.start(`Streaming speech with ${this.backendName}: ${request.text.length} chars`);
+    const result = await this.doGenerate(request);
+    const { samples, sampleRate } = decodeWav(result.audio);
+    yield { audio: encodePcmFromFloat32(samples), sampleRate };
+    consola.success(`Streamed ${result.duration.toFixed(2)}s of audio`);
   }
 
   public async unload(): Promise<void> {

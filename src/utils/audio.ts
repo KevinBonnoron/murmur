@@ -190,6 +190,17 @@ export function normalizeToInt16(samples: Float32Array, quantile = 0.999): Int16
   return output;
 }
 
+/** Encode Float32 samples to raw 16-bit PCM (no WAV header). */
+export function encodePcmFromFloat32(samples: Float32Array): Buffer {
+  const buffer = Buffer.alloc(samples.length * 2);
+  for (let i = 0; i < samples.length; i++) {
+    // biome-ignore lint/style/noNonNullAssertion: bounded loop
+    const val = Math.round(samples[i]! * 32767.0);
+    buffer.writeInt16LE(Math.max(-32768, Math.min(32767, val)), i * 2);
+  }
+  return buffer;
+}
+
 /** Encode pre-converted Int16 PCM samples to a WAV buffer. */
 export function encodeWav(samples: Int16Array, sampleRate: number): Buffer {
   const numChannels = 1;
