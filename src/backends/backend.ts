@@ -18,9 +18,15 @@ export interface AudioResult {
   duration: number;
 }
 
+export interface AudioChunk {
+  audio: Buffer;
+  sampleRate: number;
+}
+
 export interface TTSBackend {
   load(modelPath: string, manifest: ModelManifest, variant: ManifestVariant, device?: string, allowFallback?: boolean): Promise<void>;
   generate(request: GenerateRequest): Promise<AudioResult>;
+  generateStream(request: GenerateRequest): AsyncGenerator<AudioChunk, void, void>;
   unload(): Promise<void>;
   isLoaded(): boolean;
 }

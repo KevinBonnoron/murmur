@@ -1,5 +1,5 @@
-import { join } from 'node:path';
 import { mkdir, unlink } from 'node:fs/promises';
+import { join } from 'node:path';
 import { defineCommand } from 'citty';
 import consola from 'consola';
 
@@ -21,7 +21,7 @@ const PROVIDER_FILES = ['libonnxruntime_providers_cuda.so', 'libonnxruntime_prov
 
 function resolveLibDir(): string {
   // Set by the wrapper script when running as compiled binary
-  const envDir = process.env['MURMUR_LIB_DIR'];
+  const envDir = process.env.MURMUR_LIB_DIR;
   if (envDir) {
     return envDir;
   }
@@ -55,7 +55,7 @@ export default defineCommand({
 
         // Check if already installed
         const existingCuda = Bun.file(join(libDir, 'libonnxruntime_providers_cuda.so'));
-        if (await existingCuda.exists() && existingCuda.size > 1_000_000) {
+        if ((await existingCuda.exists()) && existingCuda.size > 1_000_000) {
           consola.success('CUDA providers already installed.');
           return;
         }

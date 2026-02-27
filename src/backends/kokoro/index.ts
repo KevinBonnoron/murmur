@@ -1,7 +1,9 @@
 import fs from 'node:fs/promises';
 import { basename, join } from 'node:path';
+import consola from 'consola';
 import type { ManifestVariant, ModelManifest } from '../../models/manifest.ts';
-import type { AudioResult, GenerateRequest } from '../backend.ts';
+import { encodePcmFromFloat32 } from '../../utils/audio.ts';
+import type { AudioChunk, AudioResult, GenerateRequest } from '../backend.ts';
 import { BaseTTSBackend } from '../base.ts';
 import { isEnglishVoice, phonemize } from './phonemizer.ts';
 
@@ -9,9 +11,11 @@ import { isEnglishVoice, phonemize } from './phonemizer.ts';
 type KokoroRawAudio = { audio: Float32Array; sampling_rate: number; toWav(): ArrayBuffer };
 type KokoroGenerateOptions = { voice?: string; speed?: number };
 type KokoroTokenizer = (text: string, options: { truncation: boolean }) => { input_ids: unknown };
+type KokoroStreamGenerateOptions = KokoroGenerateOptions & { split_pattern?: RegExp };
 type KokoroTTSInstance = {
   generate(text: string, options?: KokoroGenerateOptions): Promise<KokoroRawAudio>;
   generate_from_ids(inputIds: unknown, options?: KokoroGenerateOptions): Promise<KokoroRawAudio>;
+  stream(text: string, options?: KokoroStreamGenerateOptions): AsyncGenerator<{ text: string; phonemes: string; audio: KokoroRawAudio }, void, void>;
   tokenizer: KokoroTokenizer;
   list_voices(): void;
   _validate_voice(voice: string): string;
@@ -133,6 +137,30 @@ export class KokoroBackend extends BaseTTSBackend {
       sampleRate,
       duration,
     };
+  }
+
+  public override async *generateStream(request: GenerateRequest): AsyncGenerator<AudioChunk, void, void> {
+    if (!this.isLoaded()) {
+      throw new Error('Kokoro model not loaded. Call load() first.');
+    }
+
+    const tts = this.tts as KokoroTTSInstance;
+    const manifest = this.manifest as ModelManifest;
+    const voice = request.voice ?? manifest.defaults.voice;
+    const speed = request.speed ?? 1.0;
+
+    if (!isEnglishVoice(voice)) {
+      yield* super.generateStream(request);
+      return;
+    }
+
+    consola.start(`Streaming speech with Kokoro: ${request.text.length} chars`);
+
+    for await (const chunk of tts.stream(request.text, { voice, speed })) {
+      yield { audio: encodePcmFromFloat32(chunk.audio.audio), sampleRate: chunk.audio.sampling_rate };
+    }
+
+    consola.success('Streaming complete');
   }
 
   protected async doUnload(): Promise<void> {
