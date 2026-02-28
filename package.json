@@ -13,7 +13,10 @@
     "lint": "bunx biome check ./src",
     "format": "bunx biome format --write ./src",
     "check": "bunx biome check --write ./src",
-    "build": "bash scripts/build.sh"
+    "build": "bash scripts/build.sh",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.7.6",
@@ -26,7 +29,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.4",
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "vitepress": "^1.6.3"
   },
   "overrides": {
     "onnxruntime-node": "1.24.2"

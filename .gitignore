@@ -6,6 +6,10 @@ dist/
 !.env.example
 .claude/settings.local.json
 
+# VitePress
+docs/.vitepress/dist
+docs/.vitepress/cache
+
 # OS files
 .DS_Store
 Thumbs.db

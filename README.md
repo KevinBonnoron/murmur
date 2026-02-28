@@ -7,6 +7,7 @@
   <a href="https://github.com/KevinBonnoron/murmur/actions/workflows/docker.yml"><img src="https://github.com/KevinBonnoron/murmur/actions/workflows/docker.yml/badge.svg" alt="Docker Build"></a>
   <a href="https://github.com/KevinBonnoron/murmur/actions/workflows/release.yml"><img src="https://github.com/KevinBonnoron/murmur/actions/workflows/release.yml/badge.svg" alt="Release"></a>
   <a href="https://github.com/KevinBonnoron/murmur/pkgs/container/murmur"><img src="https://img.shields.io/badge/ghcr.io-murmur-blue?logo=docker" alt="Docker Image"></a>
+  <a href="https://kevinbonnoron.github.io/murmur/"><img src="https://img.shields.io/badge/docs-vitepress-646cff?logo=vitepress" alt="Documentation"></a>
   <img src="https://img.shields.io/github/license/KevinBonnoron/murmur" alt="License">
 </p>
 
