@@ -2,7 +2,7 @@ import { defineCommand } from 'citty';
 import consola from 'consola';
 import { getBackend } from '../backends/manager.ts';
 import { parseModelRef } from '../models/manifest.ts';
-import { ensureModel, ensureVoice } from '../models/registry.ts';
+import { ensureModel, ensureVoice, trackVoice } from '../models/registry.ts';
 
 export default defineCommand({
   meta: { name: 'run', description: 'Generate speech from text (one-shot, no server needed)' },
@@ -116,6 +116,7 @@ Example:
     });
 
     await Bun.write(args.output, result.audio);
+    await trackVoice(manifest, voice);
     consola.success(`Saved ${args.output} (${result.duration.toFixed(2)}s, ${result.sampleRate}Hz)`);
   },
 });

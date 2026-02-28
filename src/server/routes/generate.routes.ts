@@ -4,7 +4,7 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { z } from 'zod';
 import { BackendError } from '../../backends/backend.ts';
 import { getBackend } from '../../backends/manager.ts';
-import { ensureModel, ensureVoice } from '../../models/registry.ts';
+import { ensureModel, ensureVoice, trackVoice } from '../../models/registry.ts';
 import { zValidator } from '../validation.ts';
 
 const generateSchema = z.object({
@@ -64,10 +64,12 @@ export const generateRoutes = new Hono().post('/', zValidator('json', generateSc
         } catch {
           stream.abort();
         }
+        await trackVoice(manifest, resolvedVoice).catch(() => {});
       });
     }
 
     const result = await backend.generate(request);
+    await trackVoice(manifest, resolvedVoice);
 
     return new Response(result.audio, {
       status: 200,
