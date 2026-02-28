@@ -61,15 +61,15 @@ export const generateRoutes = new Hono().post('/', zValidator('json', generateSc
           for await (const chunk of backend.generateStream(request)) {
             await stream.write(chunk.audio);
           }
-          trackVoice(manifest, resolvedVoice);
         } catch {
           stream.abort();
         }
+        await trackVoice(manifest, resolvedVoice).catch(() => {});
       });
     }
 
     const result = await backend.generate(request);
-    trackVoice(manifest, resolvedVoice);
+    await trackVoice(manifest, resolvedVoice);
 
     return new Response(result.audio, {
       status: 200,

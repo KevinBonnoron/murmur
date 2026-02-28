@@ -116,7 +116,7 @@ Example:
     });
 
     await Bun.write(args.output, result.audio);
-    trackVoice(manifest, voice);
+    await trackVoice(manifest, voice);
     consola.success(`Saved ${args.output} (${result.duration.toFixed(2)}s, ${result.sampleRate}Hz)`);
   },
 });
