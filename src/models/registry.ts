@@ -1,19 +1,35 @@
 import { mkdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import consola from 'consola';
-import f5ttsManifest from '../../manifests/f5tts.json';
-import kokoroManifest from '../../manifests/kokoro.json';
-import piperManifest from '../../manifests/piper.json';
 import type { DownloadProgress } from '../utils/download.ts';
 import { downloadFile } from '../utils/download.ts';
 import { getVariant, type ModelManifest, parseManifest, parseModelRef, resolveVoiceUrl } from './manifest.ts';
 import { getModelDir, getVoicePath, isModelInstalled, isVoiceInstalled, listInstalledModels, loadManifest, saveManifest } from './storage.ts';
 
-const BUILTIN_MODELS: Record<string, object> = {
-  kokoro: kokoroManifest,
-  f5tts: f5ttsManifest,
-  piper: piperManifest,
-};
+async function discoverBuiltinModels(): Promise<Record<string, object>> {
+  const manifestsDir = join(import.meta.dir, '..', '..', 'manifests');
+  const models: Record<string, object> = {};
+  const glob = new Bun.Glob('*.json');
+
+  for (const file of glob.scanSync(manifestsDir)) {
+    if (file.endsWith('.schema.json')) {
+      continue;
+    }
+
+    try {
+      const content = await Bun.file(join(manifestsDir, file)).json();
+      if (content.name) {
+        models[content.name] = content;
+      }
+    } catch (err) {
+      consola.warn(`Failed to load manifest ${file}:`, err);
+    }
+  }
+
+  return models;
+}
+
+const BUILTIN_MODELS = await discoverBuiltinModels();
 
 export type PullProgress = DownloadProgress;
 

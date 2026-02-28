@@ -1,0 +1,32 @@
+{
+  "$schema": "./manifest.schema.json",
+  "name": "elevenlabs",
+  "description": "ElevenLabs cloud TTS — high-quality multilingual speech synthesis (API key required)",
+  "backend": "elevenlabs",
+  "license": "Proprietary",
+  "files": [],
+  "variants": {
+    "default": {
+      "file": "",
+      "dtype": "eleven_multilingual_v2",
+      "url": ""
+    },
+    "turbo": {
+      "file": "",
+      "dtype": "eleven_turbo_v2_5",
+      "url": ""
+    },
+    "flash": {
+      "file": "",
+      "dtype": "eleven_flash_v2_5",
+      "url": ""
+    }
+  },
+  "voice_url": "",
+  "defaults": {
+    "variant": "default",
+    "voice": "21m00Tcm4TlvDq8ikWAM",
+    "sample_rate": 24000,
+    "response_format": "wav"
+  }
+}

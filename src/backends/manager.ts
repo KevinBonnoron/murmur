@@ -5,6 +5,7 @@ import { getVariant } from '../models/manifest.ts';
 import { pullModel } from '../models/registry.ts';
 import { getModelDir } from '../models/storage.ts';
 import type { TTSBackend } from './backend.ts';
+import { ElevenLabsBackend } from './elevenlabs/index.ts';
 import { F5TTSBackend } from './f5tts/index.ts';
 import { KokoroBackend } from './kokoro/index.ts';
 import { PiperBackend } from './piper/index.ts';
@@ -147,6 +148,8 @@ function createBackend(manifest: ModelManifest): TTSBackend {
       return new F5TTSBackend();
     case 'piper':
       return new PiperBackend();
+    case 'elevenlabs':
+      return new ElevenLabsBackend();
     default:
       throw new Error(`Unsupported backend: ${manifest.backend}`);
   }

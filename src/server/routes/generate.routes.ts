@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import { stream as honoStream } from 'hono/streaming';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { z } from 'zod';
+import { BackendError } from '../../backends/backend.ts';
 import { getBackend } from '../../backends/manager.ts';
 import { ensureModel, ensureVoice } from '../../models/registry.ts';
 import { zValidator } from '../validation.ts';
@@ -29,6 +31,10 @@ export const generateRoutes = new Hono().post('/', zValidator('json', generateSc
 
     const referenceAudio = reference_audio ? Buffer.from(reference_audio, 'base64') : undefined;
 
+    const authHeader = c.req.header('Authorization');
+    const bearerMatch = authHeader?.match(/^Bearer\s+(.+)$/i);
+    const apiKey = bearerMatch?.[1]?.trim() || undefined;
+
     const request = {
       text: input,
       voice: resolvedVoice,
@@ -37,6 +43,7 @@ export const generateRoutes = new Hono().post('/', zValidator('json', generateSc
       referenceAudio,
       referenceText: reference_text,
       nfeSteps: nfe_steps,
+      apiKey,
     };
 
     if (isStream) {
@@ -73,7 +80,12 @@ export const generateRoutes = new Hono().post('/', zValidator('json', generateSc
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const status = message.includes('not installed') || message.includes('not found') ? 404 : 500;
-    return c.json({ error: message }, status);
+    let status = 500;
+    if (err instanceof BackendError) {
+      status = err.statusCode;
+    } else if (message.includes('not installed') || message.includes('not found')) {
+      status = 404;
+    }
+    return c.json({ error: message }, status as ContentfulStatusCode);
   }
 });
