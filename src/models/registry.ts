@@ -89,10 +89,12 @@ export async function pullModel(nameOrPath: string, options?: PullOptions, onPro
     // Download the default voice (if the model uses pre-built voices)
     const defaultVoice = builtinManifest.defaults.voice;
     let installedVoices: string[] = [];
-    if (defaultVoice && builtinManifest.voice_url) {
-      const voiceUrl = resolveVoiceUrl(builtinManifest, defaultVoice);
-      const voiceDest = getVoicePath(builtinManifest.name, defaultVoice);
-      await downloadFile(voiceUrl, voiceDest, undefined, `voices/${defaultVoice}.bin`, onProgress);
+    if (defaultVoice) {
+      if (builtinManifest.voice_url) {
+        const voiceUrl = resolveVoiceUrl(builtinManifest, defaultVoice);
+        const voiceDest = getVoicePath(builtinManifest.name, defaultVoice);
+        await downloadFile(voiceUrl, voiceDest, undefined, `voices/${defaultVoice}.bin`, onProgress);
+      }
       installedVoices = [defaultVoice];
     }
 
@@ -155,6 +157,14 @@ export async function ensureModel(nameOrPath: string): Promise<ModelManifest> {
   }
 
   return match;
+}
+
+export async function trackVoice(manifest: ModelManifest, voiceId: string): Promise<void> {
+  if (manifest.installed_voices.includes(voiceId)) {
+    return;
+  }
+  const updated = { ...manifest, installed_voices: [...manifest.installed_voices, voiceId] };
+  await saveManifest(updated);
 }
 
 export async function ensureVoice(manifest: ModelManifest, voiceId: string): Promise<void> {
