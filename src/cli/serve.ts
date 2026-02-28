@@ -40,6 +40,7 @@ export default defineCommand({
       port,
       hostname: host,
       fetch: app.fetch,
+      idleTimeout: 0,
     });
 
     consola.box(`murmur v0.1.0\nListening on http://${server.hostname}:${server.port}`);
